@@ -17,7 +17,7 @@ apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
 
 android {
-    namespace = 'org.firstinspires.ftc.teamcode'
+    namespace = 'org.firstinspires.ftc.RoosterDrive_Version1'
 
     packagingOptions {
         jniLibs.useLegacyPackaging true
