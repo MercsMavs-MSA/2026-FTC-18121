@@ -17,6 +17,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     DcMotor backLeftDrive;
     DcMotor backRightDrive;
 
+    //Shooters + Intake Motor
+    DcMotor ShooterBottom; //Based of what I can see on cad
+    DcMotor ShooterTop; //Based of what I can see on cad
+    DcMotor Intake; //Based of what I can see on cad
+
     // This declares the IMU needed to get the current direction the robot is facing
     IMU imu;
 
@@ -26,6 +31,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontRightDrive = hardwareMap.get(DcMotor.class, "frontRightDrive");
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
+
+        //Shooters + Intake Motor
+        ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
+        ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
+        Intake = hardwareMap.get(DcMotor.class, "Intake");
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -38,6 +48,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        //Shooters + Intake Motor
+        ShooterBottom.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        ShooterTop.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         imu = hardwareMap.get(IMU.class, "imu");
 
