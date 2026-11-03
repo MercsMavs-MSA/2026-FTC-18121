@@ -78,6 +78,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         telemetry.addLine("Hold left bumper to drive in robot relative");
         telemetry.addLine("The left joystick sets the robot direction");
         telemetry.addLine("Moving the right joystick left and right turns the robot");
+        telemetry.addLine("Click button to turn shooter on");
+        telemetry.addLine("Click button to turn shooter on");
 
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
