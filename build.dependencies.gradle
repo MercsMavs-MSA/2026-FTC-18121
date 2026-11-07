@@ -2,6 +2,7 @@ repositories {
     mavenCentral()
     google() // Needed for androidx
     maven { url 'https://repo.dairy.foundation/releases/'}
+    maven { url 'https://repo.dairy.foundation/releases/' }
 }
 
 dependencies {
@@ -16,5 +17,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.pedropathing:revhub:3.0.2'
     implementation 'com.pedropathing:tuning:1.0.0'
+    implementation 'com.pedropathing:pedro:1.0.0' // Core follower & localization classes
+    implementation 'com.pedropathing.ivy:pedro:1.1.1' // Command scheduler framework
 }
 
