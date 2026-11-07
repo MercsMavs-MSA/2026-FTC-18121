@@ -13,8 +13,10 @@ import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-@Autonomous(name = "AutoPath", group = "Autonomous")
-public class AutoPath extends LinearOpMode {
+import org.firstinspires.ftc.RoosterDrive_Version1.pedro.Constants;
+
+@Autonomous(name = "PedroPathing_auto_v1", group = "Autonomous")
+public class PedroPathing_auto_v1 extends LinearOpMode {
 
     private Follower follower;
 
