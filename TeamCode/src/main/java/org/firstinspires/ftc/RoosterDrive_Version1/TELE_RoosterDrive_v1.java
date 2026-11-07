@@ -5,12 +5,17 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
 
+    //This delcates the limelight 3A camera thingy
+    private Limelight3A limelight;
     // This declares the four motors needed
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
@@ -36,6 +41,13 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
         ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
         Intake = hardwareMap.get(DcMotor.class, "Intake");
+
+        //Limelight 3A camera
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(100);
+        limelight.pipelineSwitch(0);
+        telemetry.addData("Status", "Limelight Initialized");
+        telemetry.update();
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
