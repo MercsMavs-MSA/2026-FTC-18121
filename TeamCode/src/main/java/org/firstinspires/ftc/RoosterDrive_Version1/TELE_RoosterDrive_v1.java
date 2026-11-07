@@ -17,7 +17,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
 
-    //This delcates the limelight 3A camera thingy
+    //This declares the limelight 3A camera thingy
     Limelight3A limelight;
     // This declares the four motors needed
     DcMotor frontLeftDrive;
