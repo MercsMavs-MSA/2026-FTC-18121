@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.RoosterDrive_Version1.pedro.Constants;
 
 @Autonomous(name = "PedroPathing_auto_v1", group = "Autonomous")
-public class PedroPathing_auto_v1 extends LinearOpMode {
+public class PedroPathing_auto_v1_red extends LinearOpMode {
 
     private Follower follower;
 
@@ -57,7 +57,13 @@ public class PedroPathing_auto_v1 extends LinearOpMode {
 
         // This will now correctly find Constants if Constants.java is in this same package folder
         follower = Constants.create(hardwareMap);
-        follower.setPose(start);
+        if (follower != null) {
+            follower.setPose(start);
+            follower.update();
+        } else {
+            telemetry.addData("Error", "Follower failed to initialize!");
+            telemetry.update();
+        }
         follower.update();
 
         waitForStart();
