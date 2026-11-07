@@ -10,6 +10,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+//http://limelight.local:5801 is the limelight local hosted server
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
@@ -17,7 +18,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 public class TELE_RoosterDrive_v1 extends OpMode {
 
     //This delcates the limelight 3A camera thingy
-    private Limelight3A limelight;
+    Limelight3A limelight;
     // This declares the four motors needed
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
@@ -46,9 +47,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
         //Limelight 3A camera
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.setPollRateHz(100);
-        limelight.pipelineSwitch(0);
-        telemetry.addData("Status", "Limelight Initialized");
+        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.pipelineSwitch(0); // Switch to pipeline number 0
+        limelight.start(); // This tells Limelight to start looking!
+        telemetry.addData("Status", "Limelight Initialized"); //telemetry to show if Limelight 3a turns on
         telemetry.update();
 
         // We set the left motors in reverse which is needed for drive trains where the left
