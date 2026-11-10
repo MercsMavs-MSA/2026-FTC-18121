@@ -60,7 +60,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
-        // Reverse top motor based my convo with chatgpt
+        // Reverse top motor based my convo with ChatGPT
         ShooterTop.setDirection(DcMotor.Direction.REVERSE);
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
@@ -125,7 +125,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         theta = AngleUnit.normalizeRadians(theta -
                 imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
 
-        // Third, convert back to cartesian
+        // Third, convert back to Cartesian
         double newForward = r * Math.sin(theta);
         double newRight = r * Math.cos(theta);
 
