@@ -5,7 +5,6 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -22,7 +21,7 @@ import org.intellij.lang.annotations.Flow;
 public class TELE_RoosterDrive_v1 extends OpMode {
 
     //This declares the limelight 3A camera thingy
-    //Limelight3A limelight;
+    Limelight3A limelight;
     // This declares the four motors needed
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
