@@ -52,13 +52,19 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
         ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
         Intake = hardwareMap.get(DcMotor.class, "Intake");
-        //Limelight 3A camera
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.pipelineSwitch(0); // Switch to pipeline number 0
-        limelight.start(); // This tells Limelight to start looking!
-        telemetry.addData("Status", "Limelight Initialized"); //telemetry to show if Limelight 3a turns on
-        telemetry.update();
+        // Limelight 3A camera initialization (safely handled if not connected or configured)
+        try {
+            limelight = hardwareMap.get(Limelight3A.class, "limelight");
+            if (limelight != null) {
+                limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+                limelight.pipelineSwitch(0); // Switch to pipeline number 0
+                limelight.start(); // This tells Limelight to start looking!
+                telemetry.addData("Limelight Status", "Initialized Successfully");
+            }
+        } catch (Exception e) {
+            telemetry.addData("Limelight Warning", "Not found or failed to start: " + e.getMessage());
+            limelight = null;
+        }
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -80,17 +86,22 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         ShooterTop.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        imu = hardwareMap.get(IMU.class, "imu");
+        // IMU Initialization (safely handled if missing or failing)
+        try {
+            imu = hardwareMap.get(IMU.class, "imu");
+            RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
+                    RevHubOrientationOnRobot.LogoFacingDirection.UP;
+            RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
+                    RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
 
-        // This needs to be changed to match the orientation on your robot
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
-
-        RevHubOrientationOnRobot orientationOnRobot = new
-                RevHubOrientationOnRobot(logoDirection, usbDirection);
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
+            RevHubOrientationOnRobot orientationOnRobot = new
+                    RevHubOrientationOnRobot(logoDirection, usbDirection);
+            imu.initialize(new IMU.Parameters(orientationOnRobot));
+            telemetry.addData("IMU Status", "Initialized Successfully");
+        } catch (Exception e) {
+            telemetry.addData("IMU Warning", "Not found or failed to initialize: " + e.getMessage());
+            imu = null;
+        }
 
         telemetry.addData("Status", "Initialized Successfully");
     }
@@ -102,21 +113,24 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         telemetry.addLine("The left joystick sets the robot direction");
         telemetry.addLine("Moving the right joystick left and right turns the robot");
 
-        //
-        telemetry.addLine("Click button to turn shooter on");
-        telemetry.addLine("Click button to turn shooter on");
-
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
-        if (gamepad1.a) {
+        if (gamepad1.a && imu != null) {
             imu.resetYaw();
         }
 
-        // If you press the left bumper, you get a drive from the point of view of the robot
-        if (gamepad1.left_bumper) {
+        // If you press the left bumper or if IMU is not initialized, drive robot relative
+        if (gamepad1.left_bumper || imu == null) {
             drive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
         } else {
             driveFieldRelative(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (limelight != null) {
+            limelight.stop();
         }
     }
 
