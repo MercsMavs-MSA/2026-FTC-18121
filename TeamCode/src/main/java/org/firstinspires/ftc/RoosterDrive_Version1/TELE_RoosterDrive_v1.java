@@ -15,7 +15,6 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 //http://limelight.local:5801 is the limelight local hosted server
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.intellij.lang.annotations.Flow;
 
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
