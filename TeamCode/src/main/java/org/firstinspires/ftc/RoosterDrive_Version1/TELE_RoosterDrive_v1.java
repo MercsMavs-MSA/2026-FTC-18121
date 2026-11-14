@@ -135,17 +135,17 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     // This routine drives the robot field relative
     private void driveFieldRelative(double forward, double right, double rotate) {
-        // First, convert direction being asked to drive to polar coordinates
-        double theta = Math.atan2(forward, right);
+        // First, convert direction being asked to drive to polar coordinates (0 deg = Forward)
+        double theta = Math.atan2(right, forward);
         double r = Math.hypot(right, forward);
 
         // Second, rotate angle by the angle the robot is pointing
         theta = AngleUnit.normalizeRadians(theta -
                 imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
 
-        // Third, convert back to Cartesian
-        double newForward = r * Math.sin(theta);
-        double newRight = r * Math.cos(theta);
+        // Third, convert back to Cartesian (cos for forward, sin for right)
+        double newForward = r * Math.cos(theta);
+        double newRight = r * Math.sin(theta);
 
         // Finally, call the drive method with robot relative forward and right amounts
         drive(newForward, newRight, rotate);
