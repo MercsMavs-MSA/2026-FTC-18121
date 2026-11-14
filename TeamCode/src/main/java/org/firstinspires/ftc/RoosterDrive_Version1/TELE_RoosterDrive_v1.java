@@ -8,10 +8,10 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.Servo;
 
-/* import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.LLStatus;
-import com.qualcomm.hardware.limelightvision.Limelight3A; */
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 //http://limelight.local:5801 is the limelight local hosted server
 
@@ -54,14 +54,12 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
         Intake = hardwareMap.get(DcMotor.class, "Intake");
         //Limelight 3A camera
-        /*limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
         limelight.pipelineSwitch(0); // Switch to pipeline number 0
         limelight.start(); // This tells Limelight to start looking!
         telemetry.addData("Status", "Limelight Initialized"); //telemetry to show if Limelight 3a turns on
         telemetry.update();
-
-         */
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
