@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.hardware.Servo;
 
 /* import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -15,6 +16,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A; */
 //http://limelight.local:5801 is the limelight local hosted server
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.intellij.lang.annotations.Flow;
 
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
@@ -26,6 +28,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     DcMotor frontRightDrive;
     DcMotor backLeftDrive;
     DcMotor backRightDrive;
+
+    Servo FlowerServo;
 
     //Shooters + Intake Motor
     DcMotor ShooterBottom; //Based of what I can see on cad
@@ -42,6 +46,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
+        FlowerServo = hardwareMap.get(Servo.class, "flowerServo");
         //Shooters + Intake Motor
         ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
         ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
