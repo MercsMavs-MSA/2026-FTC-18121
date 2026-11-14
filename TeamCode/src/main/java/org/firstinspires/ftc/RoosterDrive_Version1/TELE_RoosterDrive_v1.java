@@ -29,11 +29,13 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     DcMotor backLeftDrive;
     DcMotor backRightDrive;
 
+    /* //DELETE LATER
     Servo FlowerServo;
 
     //Shooters + Intake Motor
     DcMotor ShooterBottom; //Based of what I can see on cad
     DcMotor ShooterTop; //Based of what I can see on cad
+     */ //DELETE LATER
     DcMotor Intake; //Based of what I can see on cad
 
     // This declares the IMU needed to get the current direction the robot is facing
@@ -46,12 +48,13 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
-        FlowerServo = hardwareMap.get(Servo.class, "flowerServo");
+        //FlowerServo = hardwareMap.get(Servo.class, "flowerServo"); //DELETE LATER
         //Shooters + Intake Motor
+        /*//DELETE LATER
         ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
         ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
         Intake = hardwareMap.get(DcMotor.class, "Intake");
-
+        *///DELETE LATER
         //Limelight 3A camera
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
@@ -66,7 +69,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // Reverse top motor based my convo with ChatGPT
-        ShooterTop.setDirection(DcMotor.Direction.REVERSE);
+        //DELETE LATER ShooterTop.setDirection(DcMotor.Direction.REVERSE);
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
         // wires, you should remove these lines.
@@ -76,8 +79,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //Shooters + Intake Motor
-        ShooterBottom.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        ShooterTop.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //DELETE LATER ShooterBottom.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //DELETE LATER ShooterTop.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         imu = hardwareMap.get(IMU.class, "imu");
