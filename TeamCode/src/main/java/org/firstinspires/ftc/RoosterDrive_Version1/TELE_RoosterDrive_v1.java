@@ -151,18 +151,18 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     public void drive(double forward, double right, double rotate) {
         // This calculates the power needed for each wheel based on the amount of forward,
         // strafe right, and rotate
-        double frontLeftPower = forward + right + rotate;
-        double frontRightPower = forward - right - rotate;
-        double backRightPower = forward + right - rotate;
-        double backLeftPower = forward - right + rotate;
+        double frontLeftPower = Math.abs(forward + right + rotate);
+        double frontRightPower = Math.abs(forward - right - rotate);
+        double backRightPower = Math.abs(forward + right - rotate);
+        double backLeftPower = Math.abs(forward - right + rotate);
 
         double maxPower = 1.0;
         double maxSpeed = 1.0;
 
-        maxPower = Math.max(maxPower, Math.abs(frontLeftPower));
-        maxPower = Math.max(maxPower, Math.abs(frontRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backLeftPower));
+        maxPower = Math.max(maxPower, frontLeftPower);
+        maxPower = Math.max(maxPower, frontRightPower);
+        maxPower = Math.max(maxPower, backRightPower);
+        maxPower = Math.max(maxPower, backLeftPower);
 
         frontLeftDrive.setPower(maxSpeed * (frontLeftPower / maxPower));
         frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
