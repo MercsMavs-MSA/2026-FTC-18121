@@ -13,6 +13,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 //http://limelight.local:5801 is the limelight local hosted server
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
@@ -29,12 +30,17 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     Servo FlowerServo;
 
     //Shooters + Intake Motor
-    DcMotor ShooterBottom; //Based of what I can see on cad
-    DcMotor ShooterTop; //Based of what I can see on cad
+    DcMotor Shooter; //Based of what I can see on cad
+    DcMotor Transfer; //Based of what I can see on cad
     DcMotor Intake; //Based of what I can see on cad
 
     // This declares the IMU needed to get the current direction the robot is facing
     IMU imu;
+
+    // Shooter timer & state tracking for non-blocking spin-up delay
+    ElapsedTime shooterTimer = new ElapsedTime();
+    boolean wasShooterPressed = false;
+    static final double SPIN_UP_TIME_SECONDS = 0.5; // Delay in seconds for shooter flywheel to reach max speed
 
     @Override
     public void init() {
@@ -46,8 +52,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         FlowerServo = hardwareMap.get(Servo.class, "flowerServo"); //DELETE LATER
         //Shooters + Intake Motor
 
-        ShooterBottom = hardwareMap.get(DcMotor.class, "BottomShooter");
-        ShooterTop = hardwareMap.get(DcMotor.class, "TopShooter");
+        Shooter = hardwareMap.get(DcMotor.class, "BottomShooter");
+        Transfer = hardwareMap.get(DcMotor.class, "TopShooter");
         Intake = hardwareMap.get(DcMotor.class, "Intake");
         // Limelight 3A camera initialization (safely handled if not connected or configured)
         try {
@@ -69,7 +75,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // Reverse top motor based my convo with ChatGPT
-        ShooterTop.setDirection(DcMotor.Direction.REVERSE);
+        Transfer.setDirection(DcMotor.Direction.REVERSE);
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
         // wires, you should remove these lines.
@@ -79,8 +85,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //Shooters + Intake Motor
-        ShooterBottom.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        ShooterTop.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Transfer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // IMU Initialization (safely handled if missing or failing)
@@ -122,12 +128,66 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         } else {
             driveFieldRelative(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
         }
+
+        // --- SHOOTER CONTROLS ---
+        // Pressing Right Trigger (Controller 1) turns on Shooter motor, waits for spin-up, then turns on Transfer motor
+        boolean shootPressed = gamepad1.right_trigger > 0.1;
+        shoot(shootPressed);
+
+        // Intake controls: Hold X to intake (1.0), Hold Y to reverse (-1.0)
+        if (Intake != null) {
+            if (gamepad1.x) {
+                Intake.setPower(1.0);
+            } else if (gamepad1.y) {
+                Intake.setPower(-1.0);
+            } else {
+                Intake.setPower(0.0);
+            }
+        }
     }
 
     @Override
     public void stop() {
         if (limelight != null) {
             limelight.stop();
+        }
+    }
+
+    // Shooter function: spins up Shooter flywheel motor first, waits for max speed, then turns on Transfer motor
+    private void shoot(boolean shootPressed) {
+        if (shootPressed) {
+            if (!wasShooterPressed) {
+                shooterTimer.reset();
+                wasShooterPressed = true;
+            }
+
+            // Step 1: Turn on Shooter motor immediately to spin up flywheel
+            if (Shooter != null) {
+                Shooter.setPower(1.0);
+            }
+
+            // Step 2: Once max spin speed delay is reached, turn on Transfer motor to feed
+            if (shooterTimer.seconds() >= SPIN_UP_TIME_SECONDS) {
+                if (Transfer != null) {
+                    Transfer.setPower(1.0);
+                }
+                telemetry.addData("Shooter Status", "FIRING (Transfer Active)");
+            } else {
+                if (Transfer != null) {
+                    Transfer.setPower(0.0);
+                }
+                telemetry.addData("Shooter Status", "SPINNING UP (%.2f s)", shooterTimer.seconds());
+            }
+        } else {
+            // Trigger released: stop both motors & reset timer state
+            wasShooterPressed = false;
+            if (Shooter != null) {
+                Shooter.setPower(0.0);
+            }
+            if (Transfer != null) {
+                Transfer.setPower(0.0);
+            }
+            telemetry.addData("Shooter Status", "OFF");
         }
     }
 
@@ -151,18 +211,18 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     public void drive(double forward, double right, double rotate) {
         // This calculates the power needed for each wheel based on the amount of forward,
         // strafe right, and rotate
-        double frontLeftPower = Math.abs(forward + right + rotate);
-        double frontRightPower = Math.abs(forward - right - rotate);
-        double backRightPower = Math.abs(forward + right - rotate);
-        double backLeftPower = Math.abs(forward - right + rotate);
+        double frontLeftPower = forward + right + rotate;
+        double frontRightPower = forward - right - rotate;
+        double backRightPower = forward + right - rotate;
+        double backLeftPower = forward - right + rotate;
 
         double maxPower = 1.0;
         double maxSpeed = 1.0;
 
-        maxPower = Math.max(maxPower, frontLeftPower);
-        maxPower = Math.max(maxPower, frontRightPower);
-        maxPower = Math.max(maxPower, backRightPower);
-        maxPower = Math.max(maxPower, backLeftPower);
+        maxPower = Math.max(maxPower, Math.abs(frontLeftPower));
+        maxPower = Math.max(maxPower, Math.abs(frontRightPower));
+        maxPower = Math.max(maxPower, Math.abs(backRightPower));
+        maxPower = Math.max(maxPower, Math.abs(backLeftPower));
 
         frontLeftDrive.setPower(maxSpeed * (frontLeftPower / maxPower));
         frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
