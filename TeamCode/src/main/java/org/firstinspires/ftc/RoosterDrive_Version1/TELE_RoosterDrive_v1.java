@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.RoosterDrive_Version1;
 
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -13,6 +14,9 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 //http://limelight.local:5801 is the limelight local hosted server
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
@@ -20,6 +24,9 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     //This declares the limelight 3A camera thingy
     Limelight3A limelight;
+
+    GoBildaPinpointDriver pinpoint;
+
     // This declares the four motors needed
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
@@ -27,12 +34,12 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     DcMotor backRightDrive;
 
 
-    Servo FlowerServo;
+    Servo flowerServo;
 
     //Shooters + Intake Motor
-    DcMotor Shooter; //Based of what I can see on cad
-    DcMotor Transfer; //Based of what I can see on cad
-    DcMotor Intake; //Based of what I can see on cad
+    DcMotor shooter; //Based of what I can see on cad
+    DcMotor transfer; //Based of what I can see on cad
+    DcMotor intake; //Based of what I can see on cad
 
     // This declares the IMU needed to get the current direction the robot is facing
     IMU imu;
@@ -49,12 +56,12 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
-        FlowerServo = hardwareMap.get(Servo.class, "flowerServo"); //DELETE LATER
+        flowerServo = hardwareMap.get(Servo.class, "flowerServo"); //DELETE LATER
         //Shooters + Intake Motor
 
-        Shooter = hardwareMap.get(DcMotor.class, "BottomShooter");
-        Transfer = hardwareMap.get(DcMotor.class, "TopShooter");
-        Intake = hardwareMap.get(DcMotor.class, "Intake");
+        shooter = hardwareMap.get(DcMotor.class, "shooterMotor");
+        transfer = hardwareMap.get(DcMotor.class, "transferMotor");
+        intake = hardwareMap.get(DcMotor.class, "intakeMotor");
         // Limelight 3A camera initialization (safely handled if not connected or configured)
         try {
             limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -75,7 +82,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // Reverse top motor based my convo with ChatGPT
-        Transfer.setDirection(DcMotor.Direction.REVERSE);
+        transfer.setDirection(DcMotor.Direction.REVERSE);
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
         // wires, you should remove these lines.
@@ -85,28 +92,27 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //Shooters + Intake Motor
-        Shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        Transfer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        transfer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // IMU Initialization (safely handled if missing or failing)
-        try {
-            imu = hardwareMap.get(IMU.class, "imu");
-            RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                    RevHubOrientationOnRobot.LogoFacingDirection.UP;
-            RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                    RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
 
-            RevHubOrientationOnRobot orientationOnRobot = new
-                    RevHubOrientationOnRobot(logoDirection, usbDirection);
-            imu.initialize(new IMU.Parameters(orientationOnRobot));
-            telemetry.addData("IMU Status", "Initialized Successfully");
-        } catch (Exception e) {
-            telemetry.addData("IMU Warning", "Not found or failed to initialize: " + e.getMessage());
-            imu = null;
-        }
+        // Get a reference to the sensor
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+
+        // Configure the sensor
+        configurePinpoint();
+
+        // Set the location of the robot - this should be the place you are starting the robot from
+        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0));
 
         telemetry.addData("Status", "Initialized Successfully");
+    }
+
+    @Override
+    public void start() {
+        flowerServo.setPosition(0.6);
     }
 
     @Override
@@ -116,34 +122,69 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         telemetry.addLine("The left joystick sets the robot direction");
         telemetry.addLine("Moving the right joystick left and right turns the robot");
 
+
+
+        if(gamepad1.dpad_up) {
+            flowerServo.setPosition(0.6);
+        }
+
+        if(gamepad1.dpad_down) {
+            flowerServo.setPosition(0.1);
+        }
+
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
-        if (gamepad1.a && imu != null) {
-            imu.resetYaw();
+        if (gamepad1.a) {
+            pinpoint.setHeading(0, AngleUnit.RADIANS);
         }
 
         // If you press the left bumper or if IMU is not initialized, drive robot relative
-        if (gamepad1.left_bumper || imu == null) {
-            drive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+        if (gamepad1.left_bumper) {
+            drive(gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x);
         } else {
-            driveFieldRelative(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+            driveFieldRelative(gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x);
         }
 
         // --- SHOOTER CONTROLS ---
-        // Pressing Right Trigger (Controller 1) turns on Shooter motor, waits for spin-up, then turns on Transfer motor
-        boolean shootPressed = gamepad1.right_trigger > 0.1;
-        shoot(shootPressed);
+        // Pressing Right Trigger (Controller 1) turns on Shooter motor, waits for spin-up, then turns on transfer motor
+//        boolean shootPressed = gamepad1.right_trigger > 0.1;
+//        shoot(shootPressed);
+//        shooter.setPower(-gamepad1.right_trigger);
+        if (gamepad1.right_bumper) {
+            shooter.setPower(-1.0);
+        } else {
+            shooter.setPower(0.0);
+        }
+
+        if (gamepad1.y) {
+            transfer.setPower(1.0);
+        }
+//        transfer.setPower(gamepad1.right_trigger);
+//        transfer.setPower(gamepad1.left_trigger);
+        intake.setPower(-gamepad1.left_trigger);
+//        if (gamepad1.x) {
+//            intake.setPower(1.0);
+////            transfer.setPower(-1.0);
+//        }
+
 
         // Intake controls: Hold X to intake (1.0), Hold Y to reverse (-1.0)
-        if (Intake != null) {
-            if (gamepad1.x) {
-                Intake.setPower(1.0);
-            } else if (gamepad1.y) {
-                Intake.setPower(-1.0);
-            } else {
-                Intake.setPower(0.0);
-            }
-        }
+//        if (intake != null) {
+//            if (gamepad1.x) {
+//                intake.setPower(1.0);
+//            } else if (gamepad1.y) {
+//                intake.setPower(-1.0);
+//            } else {
+//                intake.setPower(0.0);
+//            }
+//        }
+
+        pinpoint.update();
+        Pose2D pose2D = pinpoint.getPosition();
+
+        telemetry.addData("X coordinate (IN)", pose2D.getX(DistanceUnit.INCH));
+        telemetry.addData("Y coordinate (IN)", pose2D.getY(DistanceUnit.INCH));
+        telemetry.addData("Heading angle (DEGREES)", pose2D.getHeading(AngleUnit.DEGREES));
     }
 
     @Override
@@ -153,42 +194,42 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    // Shooter function: spins up Shooter flywheel motor first, waits for max speed, then turns on Transfer motor
+    // Shooter function: spins up Shooter flywheel motor first, waits for max speed, then turns on transfer motor
     private void shoot(boolean shootPressed) {
-        if (shootPressed) {
-            if (!wasShooterPressed) {
-                shooterTimer.reset();
-                wasShooterPressed = true;
-            }
+//        if (shootPressed) {
+//            if (!wasShooterPressed) {
+//                shooterTimer.reset();
+//                wasShooterPressed = true;
+//            }
 
             // Step 1: Turn on Shooter motor immediately to spin up flywheel
-            if (Shooter != null) {
-                Shooter.setPower(1.0);
+            if (shooter != null) {
+                shooter.setPower(-1.0);
             }
 
-            // Step 2: Once max spin speed delay is reached, turn on Transfer motor to feed
-            if (shooterTimer.seconds() >= SPIN_UP_TIME_SECONDS) {
-                if (Transfer != null) {
-                    Transfer.setPower(1.0);
-                }
-                telemetry.addData("Shooter Status", "FIRING (Transfer Active)");
-            } else {
-                if (Transfer != null) {
-                    Transfer.setPower(0.0);
-                }
-                telemetry.addData("Shooter Status", "SPINNING UP (%.2f s)", shooterTimer.seconds());
-            }
-        } else {
-            // Trigger released: stop both motors & reset timer state
-            wasShooterPressed = false;
-            if (Shooter != null) {
-                Shooter.setPower(0.0);
-            }
-            if (Transfer != null) {
-                Transfer.setPower(0.0);
-            }
-            telemetry.addData("Shooter Status", "OFF");
-        }
+//            // Step 2: Once max spin speed delay is reached, turn on transfer motor to feed
+//            if (shooterTimer.seconds() >= SPIN_UP_TIME_SECONDS) {
+//                if (transfer != null) {
+//                    transfer.setPower(1.0);
+//                }
+//                telemetry.addData("Shooter Status", "FIRING (transfer Active)");
+//            } else {
+//                if (transfer != null) {
+//                    transfer.setPower(0.0);
+//                }
+//                telemetry.addData("Shooter Status", "SPINNING UP (%.2f s)", shooterTimer.seconds());
+////            }
+//        } else {
+//            // Trigger released: stop both motors & reset timer state
+//            wasShooterPressed = false;
+//            if (shooter != null) {
+//                shooter.setPower(0.0);
+//            }
+//            if (transfer != null) {
+//                transfer.setPower(0.0);
+//            }
+//            telemetry.addData("Shooter Status", "OFF");
+//        }
     }
 
     private void driveFieldRelative(double forward, double right, double rotate) {
@@ -197,8 +238,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         double r = Math.hypot(right, forward);
 
         // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta -
-                imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+        theta = AngleUnit.normalizeRadians(theta +
+                pinpoint.getHeading(AngleUnit.RADIANS));
 
         // Third, convert back to Cartesian (cos for forward, sin for right)
         double newForward = r * Math.cos(theta);
@@ -228,5 +269,45 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
         backLeftDrive.setPower(maxSpeed * (backLeftPower / maxPower));
         backRightDrive.setPower(maxSpeed * (backRightPower / maxPower));
+    }
+
+    public void configurePinpoint(){
+        /*
+         *  Set the odometry pod positions relative to the point that you want the position to be measured from.
+         *
+         *  The X pod offset refers to how far sideways from the tracking point the X (forward) odometry pod is.
+         *  Left of the center is a positive number, right of center is a negative number.
+         *
+         *  The Y pod offset refers to how far forwards from the tracking point the Y (strafe) odometry pod is.
+         *  Forward of center is a positive number, backwards is a negative number.
+         */
+        pinpoint.setOffsets(-7.26, 0, DistanceUnit.INCH); //these are tuned for 3110-0002-0001 Product Insight #1
+
+        /*
+         * Set the kind of pods used by your robot. If you're using goBILDA odometry pods, select either
+         * the goBILDA_SWINGARM_POD, or the goBILDA_4_BAR_POD.
+         * If you're using another kind of odometry pod, uncomment setEncoderResolution and input the
+         * number of ticks per unit of your odometry pod.  For example:
+         *     pinpoint.setEncoderResolution(13.26291192, DistanceUnit.MM);
+         */
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+
+        /*
+         * Set the direction that each of the two odometry pods count. The X (forward) pod should
+         * increase when you move the robot forward. And the Y (strafe) pod should increase when
+         * you move the robot to the left.
+         */
+        pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
+                GoBildaPinpointDriver.EncoderDirection.REVERSED);
+
+        /*
+         * Before running the robot, recalibrate the IMU. This needs to happen when the robot is stationary
+         * The IMU will automatically calibrate when first powered on, but recalibrating before running
+         * the robot is a good idea to ensure that the calibration is "good".
+         * resetPosAndIMU will reset the position to 0,0,0 and also recalibrate the IMU.
+         * This is recommended before you run your autonomous, as a bad initial calibration can cause
+         * an incorrect starting value for x, y, and heading.
+         */
+        pinpoint.resetPosAndIMU();
     }
 }
