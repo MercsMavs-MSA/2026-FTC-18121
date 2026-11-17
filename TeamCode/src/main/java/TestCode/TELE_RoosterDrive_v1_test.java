@@ -305,6 +305,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
         }
 
         telemetry.addData("Flower Servo Status", FlowerServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", FlowerServo.getPosition()) : "NOT FOUND (Check Robot Config)");
+        telemetry.addData("Gate Servo Status", GateServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", GateServo.getPosition()) : "NOT FOUND (Check Robot Config)");
         telemetry.addData("Robot State", currentState);
         telemetry.addData("Shooter Power Ratio", "%.2f (%.0f%%)", shooterPowerRatio, shooterPowerRatio * 100);
         telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
