@@ -15,7 +15,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@TeleOp(name = "18121 Rooster Field Relative Drive - student", group = "Robot")
+@TeleOp(name = "18121 Rooster Field Relative Drive", group = "Robot")
 public class TELE_RoosterDrive_v1 extends OpMode {
 
     //This declares the limelight 3A camera thingy
