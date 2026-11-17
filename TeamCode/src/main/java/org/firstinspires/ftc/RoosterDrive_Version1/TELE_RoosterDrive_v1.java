@@ -57,8 +57,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     private RobotState currentState = RobotState.IDLE;
 
     // Gate Servo Position & Subsystem Power Constants
-    public static double GATE_CLOSED_POSITION = 1.0;
-    public static double GATE_OPEN_POSITION = 0.5;
+    public static double GATE_CLOSED_POSITION = 0;
+    public static double GATE_OPEN_POSITION = 0;
     public static double FLOWER_OPEN_POSITION = 0.7;
     public static double FLOWER_CLOSED_POSITION = 0.2;
 
@@ -261,7 +261,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(0.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
+                //setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -276,7 +276,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(0.0);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
-                setGatePosition(GATE_CLOSED_POSITION);
+                //setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -291,7 +291,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
+                //setGatePosition(GATE_CLOSED_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
@@ -305,7 +305,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
-                setGatePosition(GATE_OPEN_POSITION);
+                //setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
@@ -338,12 +338,12 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    private void setGatePosition(double position) {
+    /*private void setGatePosition(double position) {
         if (GateServo != null) {
             GateServo.setPosition(position);
         }
     }
-
+*/
     private void driveFieldRelative(double forward, double right, double rotate) {
         // First, convert direction being asked to drive to polar coordinates (0 deg = Forward)
         double theta = Math.atan2(right, forward);
