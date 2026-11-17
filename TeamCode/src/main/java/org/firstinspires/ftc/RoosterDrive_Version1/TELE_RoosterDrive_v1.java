@@ -56,12 +56,21 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     private RobotState currentState = RobotState.IDLE;
 
-    // Gate Servo Position Constants
+    // Gate Servo Position & Subsystem Power Constants
     public static double GATE_CLOSED_POSITION = 0.0;
     public static double GATE_OPEN_POSITION = 1.0;
+    public static double FLOWER_OPEN_POSITION = 0.8;
+    public static double FLOWER_CLOSED_POSITION = 0.1;
+
+    // Max power settings for intake, transfer, and shooter motors (100% full speed)
+    public static double INTAKE_MAX_POWER = -1.0;
+    public static double TRANSFER_MAX_POWER = -1.0;
+    public static double SHOOTER_MAX_POWER = -1.0;
 
     // Target velocity threshold for shooter motor in encoder ticks per second (higher for max speed)
     public static double SHOOTER_TARGET_VELOCITY = 3500.0;
+
+    private ElapsedTime stateTimer = new ElapsedTime();
 
     @Override
     public void init() {
@@ -71,12 +80,46 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
         // Hardware map lookups with fallbacks
-        try { flowerServo = hardwareMap.get(Servo.class, "flowerServo"); } catch (Exception e) { flowerServo = null; }
-        try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e) { try { GateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) { GateServo = null; } }
+        try { flowerServo = hardwareMap.get(Servo.class, "flowerServo"); } catch (Exception e1) {
+            try { flowerServo = hardwareMap.get(Servo.class, "FlowerServo"); } catch (Exception e2) {
+                try { flowerServo = hardwareMap.get(Servo.class, "flower"); } catch (Exception e3) {
+                    try { flowerServo = hardwareMap.get(Servo.class, "Flower"); } catch (Exception e4) {
+                        flowerServo = null;
+                    }
+                }
+            }
+        }
+        try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e1) {
+            try { GateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) {
+                try { GateServo = hardwareMap.get(Servo.class, "gate"); } catch (Exception e3) {
+                    try { GateServo = hardwareMap.get(Servo.class, "Gate"); } catch (Exception e4) {
+                        GateServo = null;
+                    }
+                }
+            }
+        }
 
-        try { shooter = hardwareMap.get(DcMotorEx.class, "shooterMotor"); } catch (Exception e) { try { shooter = hardwareMap.get(DcMotorEx.class, "BottomShooter"); } catch (Exception e2) { shooter = null; } }
-        try { transfer = hardwareMap.get(DcMotorEx.class, "transferMotor"); } catch (Exception e) { try { transfer = hardwareMap.get(DcMotorEx.class, "TopShooter"); } catch (Exception e2) { transfer = null; } }
-        try { intake = hardwareMap.get(DcMotor.class, "intakeMotor"); } catch (Exception e) { try { intake = hardwareMap.get(DcMotor.class, "Intake"); } catch (Exception e2) { intake = null; } }
+        try { shooter = hardwareMap.get(DcMotorEx.class, "shooterMotor"); } catch (Exception e1) {
+            try { shooter = hardwareMap.get(DcMotorEx.class, "BottomShooter"); } catch (Exception e2) {
+                try { shooter = hardwareMap.get(DcMotorEx.class, "shooter"); } catch (Exception e3) {
+                    shooter = null;
+                }
+            }
+        }
+        try { transfer = hardwareMap.get(DcMotorEx.class, "transferMotor"); } catch (Exception e1) {
+            try { transfer = hardwareMap.get(DcMotorEx.class, "TopShooter"); } catch (Exception e2) {
+                try { transfer = hardwareMap.get(DcMotorEx.class, "transfer"); } catch (Exception e3) {
+                    transfer = null;
+                }
+            }
+        }
+        try { intake = hardwareMap.get(DcMotor.class, "intakeMotor"); } catch (Exception e1) {
+            try { intake = hardwareMap.get(DcMotor.class, "Intake"); } catch (Exception e2) {
+                try { intake = hardwareMap.get(DcMotor.class, "intake"); } catch (Exception e3) {
+                    intake = null;
+                }
+            }
+        }
         // Limelight 3A camera initialization (safely handled if not connected or configured)
         try {
             limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -97,7 +140,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // Reverse top motor based my convo with ChatGPT
-        transfer.setDirection(DcMotor.Direction.REVERSE);
+        if (transfer != null) transfer.setDirection(DcMotor.Direction.REVERSE);
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
         // wires, you should remove these lines.
@@ -106,10 +149,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        //Shooters + Intake Motor
-        shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        transfer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Shooters + Intake Motor (RUN_WITHOUT_ENCODER sets 100% max speed full raw voltage)
+        if (shooter != null) shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        if (transfer != null) transfer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        if (intake != null) intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // IMU Initialization (safely handled if missing or failing)
 
@@ -128,28 +171,32 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     @Override
     public void start() {
         if (flowerServo != null) {
-            flowerServo.setPosition(0.8);
+            flowerServo.setPosition(FLOWER_OPEN_POSITION);
         }
     }
 
     @Override
     public void loop() {
-        telemetry.addLine("=== CONTROLLER 1 CONTROLS ===");
+        telemetry.addLine("=== CONTROLLER CONTROLS ===");
         telemetry.addLine("Left Stick Y/X: Forward / Strafe");
         telemetry.addLine("Right Stick X : Turn Robot");
         telemetry.addLine("Left Bumper   : Hold for Robot-Relative Drive");
         telemetry.addLine("Right Trigger : Spin-up Shooter -> Auto-Feed");
         telemetry.addLine("Left Trigger  : Intake & Transfer");
         telemetry.addLine("Button A      : Reset Heading / Yaw");
-        telemetry.addLine("Dpad Up/Down  : Flower Servo (0.8 / 0.1)");
+        telemetry.addLine("Dpad Up/Right : Flower Servo Open (0.8)");
+        telemetry.addLine("Dpad Down/Left: Flower Servo Closed (0.1)");
         telemetry.addLine("=============================");
 
-        // Flower Servo Dpad Controls (Flower servo is only moved by these dpad buttons)
+        // Flower Servo Dpad Controls (supports Gamepad 1 & 2, all Dpad directions)
+        boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up || gamepad1.dpad_right || gamepad2.dpad_right;
+        boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down || gamepad1.dpad_left || gamepad2.dpad_left;
+
         if (flowerServo != null) {
-            if (gamepad1.dpad_up) {
-                flowerServo.setPosition(0.8);
-            } else if (gamepad1.dpad_down) {
-                flowerServo.setPosition(0.1);
+            if (dpadUp) {
+                flowerServo.setPosition(FLOWER_OPEN_POSITION);
+            } else if (dpadDown) {
+                flowerServo.setPosition(FLOWER_CLOSED_POSITION);
             }
         }
 
@@ -186,8 +233,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     // --- SUBSYSTEM STATE MACHINE ---
     private void updateStateMachine() {
-        boolean rightTriggerPressed = gamepad1.right_trigger > 0.1;
-        boolean leftTriggerPressed = gamepad1.left_trigger > 0.1;
+        boolean rightTriggerPressed = gamepad1.right_trigger > 0.1 || gamepad2.right_trigger > 0.1;
+        boolean leftTriggerPressed = gamepad1.left_trigger > 0.1 || gamepad2.left_trigger > 0.1;
 
         double currentVelocity = (shooter != null) ? Math.abs(shooter.getVelocity()) : 0.0;
 
@@ -201,20 +248,22 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
+                    stateTimer.reset();
                 } else if (leftTriggerPressed) {
                     currentState = RobotState.INTAKING;
                 }
                 break;
 
             case INTAKING:
-                // INTAKING: run both intake and transfer, gate closed
+                // INTAKING: run both intake and transfer at max speed, gate closed
                 setShooterPower(0.0);
-                setTransferPower(-1.0);
-                setIntakePower(-1.0);
+                setTransferPower(TRANSFER_MAX_POWER);
+                setIntakePower(INTAKE_MAX_POWER);
                 setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
+                    stateTimer.reset();
                 } else if (!leftTriggerPressed) {
                     currentState = RobotState.IDLE;
                 }
@@ -222,23 +271,23 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
             case SPINNING_UP:
                 // SPINNING_UP: shooter motor max speed, gate closed, transfer off
-                setShooterPower(-1.0);
+                setShooterPower(SHOOTER_MAX_POWER);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_CLOSED_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
-                } else if (currentVelocity >= SHOOTER_TARGET_VELOCITY) {
+                } else if (currentVelocity >= SHOOTER_TARGET_VELOCITY || stateTimer.seconds() > 0.2) {
                     currentState = RobotState.FEEDING;
                 }
                 break;
 
             case FEEDING:
-                // FEEDING: open gate, transfer running, shooter running at speed
-                setShooterPower(-1.0);
-                setTransferPower(-1.0);
-                setIntakePower(0.0);
+                // FEEDING: open gate, intake, transfer, and shooter all running at max speed
+                setShooterPower(SHOOTER_MAX_POWER);
+                setTransferPower(TRANSFER_MAX_POWER);
+                setIntakePower(INTAKE_MAX_POWER);
                 setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
@@ -247,6 +296,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 break;
         }
 
+        telemetry.addData("Flower Servo Status", flowerServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", flowerServo.getPosition()) : "NOT FOUND (Check Robot Config)");
         telemetry.addData("Robot State", currentState);
         telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
         telemetry.addData("Target Velocity Threshold", "%.2f", SHOOTER_TARGET_VELOCITY);
