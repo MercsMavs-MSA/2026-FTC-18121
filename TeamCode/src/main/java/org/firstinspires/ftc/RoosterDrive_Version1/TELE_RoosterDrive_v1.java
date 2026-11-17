@@ -209,10 +209,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         boolean dpadLeft = gamepad1.dpad_left || gamepad2.dpad_left;
 
         if (dpadRight && !lastDpadRight) {
-            shooterPowerRatio = Math.min(1.0, shooterPowerRatio + 0.05);
+            shooterPowerRatio = Math.min(1.0, shooterPowerRatio + 0.01);
         }
         if (dpadLeft && !lastDpadLeft) {
-            shooterPowerRatio = Math.max(0.0, shooterPowerRatio - 0.05);
+            shooterPowerRatio = Math.max(0.0, shooterPowerRatio - 0.01);
         }
         lastDpadRight = dpadRight;
         lastDpadLeft = dpadLeft;
