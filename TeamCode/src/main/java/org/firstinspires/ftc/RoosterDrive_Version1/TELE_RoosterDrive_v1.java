@@ -57,8 +57,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     private RobotState currentState = RobotState.IDLE;
 
     // Gate Servo Position & Subsystem Power Constants
-    public static double GATE_CLOSED_POSITION = 0.0;
-    public static double GATE_OPEN_POSITION = 1.0;
+    public static double GATE_CLOSED_POSITION = 1.0;
+    public static double GATE_OPEN_POSITION = 0.5;
     public static double FLOWER_OPEN_POSITION = 0.7;
     public static double FLOWER_CLOSED_POSITION = 0.2;
 
