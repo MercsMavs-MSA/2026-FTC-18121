@@ -92,9 +92,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // Reverse top motor based my convo with ChatGPT
-        if (Transfer != null) {
-            Transfer.setDirection(DcMotor.Direction.REVERSE);
-        }
+
 
         // This uses RUN_USING_ENCODER to be more accurate. If you don't have the encoder
         // wires, you should remove these lines.
@@ -194,7 +192,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
                 break;
 
             case SPINNING_UP:
-                setShooterPower(-1.0);
+                setShooterPower(-10.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_CLOSED_POSITION);
