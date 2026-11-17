@@ -196,11 +196,13 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up;
         boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down;
 
+        if (flowerServo != null) {
             if (dpadUp) {
                 flowerServo.setPosition(FLOWER_OPEN_POSITION);
             } else if (dpadDown) {
                 flowerServo.setPosition(FLOWER_CLOSED_POSITION);
             }
+        }
 
         // Side D-pad Controls (Dpad Left/Right) to adjust shooter power ratio live (starts at 1.0, steps of 0.05)
         boolean dpadRight = gamepad1.dpad_right || gamepad2.dpad_right;
@@ -248,8 +250,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     // --- SUBSYSTEM STATE MACHINE ---
     private void updateStateMachine() {
-        boolean rightTriggerPressed = gamepad1.right_trigger > 0.1 || gamepad2.right_trigger > 0.1;
-        boolean leftTriggerPressed = gamepad1.left_trigger > 0.1 || gamepad2.left_trigger > 0.1;
+        boolean rightTriggerPressed = gamepad1.right_trigger > 0.5 || gamepad2.right_trigger > 0.5;
+        boolean leftTriggerPressed = gamepad1.left_trigger > 0.5 || gamepad2.left_trigger > 0.5;
 
         double currentVelocity = (shooter != null) ? Math.abs(shooter.getVelocity()) : 0.0;
 

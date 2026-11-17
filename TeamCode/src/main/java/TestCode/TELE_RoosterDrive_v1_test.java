@@ -243,8 +243,8 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
     // Subsystem state machine
     private void updateStateMachine() {
-        boolean rightTriggerPressed = gamepad1.right_trigger > 0.1 || gamepad2.right_trigger > 0.1;
-        boolean leftTriggerPressed = gamepad1.left_trigger > 0.1 || gamepad2.left_trigger > 0.1;
+        boolean rightTriggerPressed = gamepad1.right_trigger > 0.5 || gamepad2.right_trigger > 0.5;
+        boolean leftTriggerPressed = gamepad1.left_trigger > 0.5 || gamepad2.left_trigger > 0.5;
 
         double currentVelocity = (Shooter != null) ? Math.abs(Shooter.getVelocity()) : 0.0;
 
