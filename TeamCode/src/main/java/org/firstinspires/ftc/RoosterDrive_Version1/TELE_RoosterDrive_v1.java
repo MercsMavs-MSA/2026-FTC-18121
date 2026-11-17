@@ -36,19 +36,32 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
 
     Servo flowerServo;
+    Servo GateServo;
 
     //Shooters + Intake Motor
-    DcMotor shooter; //Based of what I can see on cad
-    DcMotor transfer; //Based of what I can see on cad
+    DcMotorEx shooter; //Based of what I can see on cad
+    DcMotorEx transfer; //Based of what I can see on cad
     DcMotor intake; //Based of what I can see on cad
 
     // This declares the IMU needed to get the current direction the robot is facing
     IMU imu;
 
-    // Shooter timer & state tracking for non-blocking spin-up delay
-    ElapsedTime shooterTimer = new ElapsedTime();
-    boolean wasShooterPressed = false;
-    static final double SPIN_UP_TIME_SECONDS = 0.5; // Delay in seconds for shooter flywheel to reach max speed
+    // State Machine Enum for the 4 Subsystem States
+    public enum RobotState {
+        IDLE,
+        INTAKING,
+        SPINNING_UP,
+        FEEDING
+    }
+
+    private RobotState currentState = RobotState.IDLE;
+
+    // Gate Servo Position Constants
+    public static double GATE_CLOSED_POSITION = 0.0;
+    public static double GATE_OPEN_POSITION = 1.0;
+
+    // Target velocity threshold for shooter motor in encoder ticks per second
+    public static double SHOOTER_TARGET_VELOCITY = 2000.0;
 
     @Override
     public void init() {
@@ -57,12 +70,13 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
-        flowerServo = hardwareMap.get(Servo.class, "flowerServo"); //DELETE LATER
-        //Shooters + Intake Motor
+        // Hardware map lookups with fallbacks
+        try { flowerServo = hardwareMap.get(Servo.class, "flowerServo"); } catch (Exception e) { flowerServo = null; }
+        try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e) { try { GateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) { GateServo = null; } }
 
-        shooter = hardwareMap.get(DcMotor.class, "shooterMotor");
-        transfer = hardwareMap.get(DcMotor.class, "transferMotor");
-        intake = hardwareMap.get(DcMotor.class, "intakeMotor");
+        try { shooter = hardwareMap.get(DcMotorEx.class, "shooterMotor"); } catch (Exception e) { try { shooter = hardwareMap.get(DcMotorEx.class, "BottomShooter"); } catch (Exception e2) { shooter = null; } }
+        try { transfer = hardwareMap.get(DcMotorEx.class, "transferMotor"); } catch (Exception e) { try { transfer = hardwareMap.get(DcMotorEx.class, "TopShooter"); } catch (Exception e2) { transfer = null; } }
+        try { intake = hardwareMap.get(DcMotor.class, "intakeMotor"); } catch (Exception e) { try { intake = hardwareMap.get(DcMotor.class, "Intake"); } catch (Exception e2) { intake = null; } }
         // Limelight 3A camera initialization (safely handled if not connected or configured)
         try {
             limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -133,59 +147,28 @@ public class TELE_RoosterDrive_v1 extends OpMode {
             flowerServo.setPosition(0.1);
         }
 
-        // If you press the A button, then you reset the Yaw to be zero from the way
-        // the robot is currently pointing
-        if (gamepad1.a) {
+        // Reset Pinpoint Odometry Heading on button A
+        if (gamepad1.a && pinpoint != null) {
             pinpoint.setHeading(0, AngleUnit.RADIANS);
         }
 
-        // If you press the left bumper or if IMU is not initialized, drive robot relative
-        if (gamepad1.left_bumper) {
+        // Drive logic (Field-relative or Robot-relative)
+        if (gamepad1.left_bumper || pinpoint == null) {
             drive(gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x);
         } else {
             driveFieldRelative(gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x);
         }
 
-        // --- SHOOTER CONTROLS ---
-        // Pressing Right Trigger (Controller 1) turns on Shooter motor, waits for spin-up, then turns on transfer motor
-//        boolean shootPressed = gamepad1.right_trigger > 0.1;
-//        shoot(shootPressed);
-//        shooter.setPower(-gamepad1.right_trigger);
-        if (gamepad1.right_bumper) {
-            shooter.setPower(-1.0);
-        } else {
-            shooter.setPower(0.0);
+        // Run subsystem State Machine periodically in loop
+        updateStateMachine();
+
+        if (pinpoint != null) {
+            pinpoint.update();
+            Pose2D pose2D = pinpoint.getPosition();
+            telemetry.addData("X coordinate (IN)", pose2D.getX(DistanceUnit.INCH));
+            telemetry.addData("Y coordinate (IN)", pose2D.getY(DistanceUnit.INCH));
+            telemetry.addData("Heading angle (DEGREES)", pose2D.getHeading(AngleUnit.DEGREES));
         }
-
-        if (gamepad1.y) {
-            transfer.setPower(1.0);
-        }
-//        transfer.setPower(gamepad1.right_trigger);
-//        transfer.setPower(gamepad1.left_trigger);
-        intake.setPower(-gamepad1.left_trigger);
-//        if (gamepad1.x) {
-//            intake.setPower(1.0);
-////            transfer.setPower(-1.0);
-//        }
-
-
-        // Intake controls: Hold X to intake (1.0), Hold Y to reverse (-1.0)
-//        if (intake != null) {
-//            if (gamepad1.x) {
-//                intake.setPower(1.0);
-//            } else if (gamepad1.y) {
-//                intake.setPower(-1.0);
-//            } else {
-//                intake.setPower(0.0);
-//            }
-//        }
-
-        pinpoint.update();
-        Pose2D pose2D = pinpoint.getPosition();
-
-        telemetry.addData("X coordinate (IN)", pose2D.getX(DistanceUnit.INCH));
-        telemetry.addData("Y coordinate (IN)", pose2D.getY(DistanceUnit.INCH));
-        telemetry.addData("Heading angle (DEGREES)", pose2D.getHeading(AngleUnit.DEGREES));
     }
 
     @Override
@@ -195,42 +178,96 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    // Shooter function: spins up Shooter flywheel motor first, waits for max speed, then turns on transfer motor
-    private void shoot(boolean shootPressed) {
-//        if (shootPressed) {
-//            if (!wasShooterPressed) {
-//                shooterTimer.reset();
-//                wasShooterPressed = true;
-//            }
+    // --- SUBSYSTEM STATE MACHINE ---
+    private void updateStateMachine() {
+        boolean rightTriggerPressed = gamepad1.right_trigger > 0.1;
+        boolean leftTriggerPressed = gamepad1.left_trigger > 0.1;
 
-            // Step 1: Turn on Shooter motor immediately to spin up flywheel
-            if (shooter != null) {
-                shooter.setPower(-1.0);
-            }
+        double currentVelocity = (shooter != null) ? Math.abs(shooter.getVelocity()) : 0.0;
 
-//            // Step 2: Once max spin speed delay is reached, turn on transfer motor to feed
-//            if (shooterTimer.seconds() >= SPIN_UP_TIME_SECONDS) {
-//                if (transfer != null) {
-//                    transfer.setPower(1.0);
-//                }
-//                telemetry.addData("Shooter Status", "FIRING (transfer Active)");
-//            } else {
-//                if (transfer != null) {
-//                    transfer.setPower(0.0);
-//                }
-//                telemetry.addData("Shooter Status", "SPINNING UP (%.2f s)", shooterTimer.seconds());
-////            }
-//        } else {
-//            // Trigger released: stop both motors & reset timer state
-//            wasShooterPressed = false;
-//            if (shooter != null) {
-//                shooter.setPower(0.0);
-//            }
-//            if (transfer != null) {
-//                transfer.setPower(0.0);
-//            }
-//            telemetry.addData("Shooter Status", "OFF");
-//        }
+        switch (currentState) {
+            case IDLE:
+                // IDLE: default state - all motors off, gate closed
+                setShooterPower(0.0);
+                setTransferPower(0.0);
+                setIntakePower(0.0);
+                setGatePosition(GATE_CLOSED_POSITION);
+
+                if (rightTriggerPressed) {
+                    currentState = RobotState.SPINNING_UP;
+                } else if (leftTriggerPressed) {
+                    currentState = RobotState.INTAKING;
+                }
+                break;
+
+            case INTAKING:
+                // INTAKING: run both intake and transfer, gate closed
+                setShooterPower(0.0);
+                setTransferPower(1.0);
+                setIntakePower(-1.0);
+                setGatePosition(GATE_CLOSED_POSITION);
+
+                if (rightTriggerPressed) {
+                    currentState = RobotState.SPINNING_UP;
+                } else if (!leftTriggerPressed) {
+                    currentState = RobotState.IDLE;
+                }
+                break;
+
+            case SPINNING_UP:
+                // SPINNING_UP: shooter motor max speed, gate closed, transfer off
+                setShooterPower(-1.0);
+                setTransferPower(0.0);
+                setIntakePower(0.0);
+                setGatePosition(GATE_CLOSED_POSITION);
+
+                if (!rightTriggerPressed) {
+                    currentState = RobotState.IDLE;
+                } else if (currentVelocity >= SHOOTER_TARGET_VELOCITY) {
+                    currentState = RobotState.FEEDING;
+                }
+                break;
+
+            case FEEDING:
+                // FEEDING: open gate, transfer running, shooter running at speed
+                setShooterPower(-1.0);
+                setTransferPower(1.0);
+                setIntakePower(0.0);
+                setGatePosition(GATE_OPEN_POSITION);
+
+                if (!rightTriggerPressed) {
+                    currentState = RobotState.IDLE;
+                }
+                break;
+        }
+
+        telemetry.addData("Robot State", currentState);
+        telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
+        telemetry.addData("Target Velocity Threshold", "%.2f", SHOOTER_TARGET_VELOCITY);
+    }
+
+    private void setShooterPower(double power) {
+        if (shooter != null) {
+            shooter.setPower(power);
+        }
+    }
+
+    private void setTransferPower(double power) {
+        if (transfer != null) {
+            transfer.setPower(power);
+        }
+    }
+
+    private void setIntakePower(double power) {
+        if (intake != null) {
+            intake.setPower(power);
+        }
+    }
+
+    private void setGatePosition(double position) {
+        if (GateServo != null) {
+            GateServo.setPosition(position);
+        }
     }
 
     private void driveFieldRelative(double forward, double right, double rotate) {
