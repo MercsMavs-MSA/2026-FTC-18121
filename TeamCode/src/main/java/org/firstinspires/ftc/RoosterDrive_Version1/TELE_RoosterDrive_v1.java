@@ -287,7 +287,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 break;
 
             case SPINNING_UP:
-                // SPINNING_UP (0 to 0.3s): shooter spins up at live RPM, transfer off, gate closed
+                //SPINNING_UP (0 to 0.3s): shooter spins up at live RPM, transfer off, gate closed
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
@@ -338,12 +338,12 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    /*private void setGatePosition(double position) {
+    private void setGatePosition(double position) {
         if (GateServo != null) {
             GateServo.setPosition(position);
         }
     }
-*/
+
     private void driveFieldRelative(double forward, double right, double rotate) {
         // First, convert direction being asked to drive to polar coordinates (0 deg = Forward)
         double theta = Math.atan2(right, forward);
