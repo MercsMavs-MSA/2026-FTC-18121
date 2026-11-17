@@ -53,16 +53,18 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
     // Gate Servo Position & Subsystem Power Constants
     public static double GATE_CLOSED_POSITION = 0.0;
     public static double GATE_OPEN_POSITION = 1.0;
-    public static double FLOWER_OPEN_POSITION = 0.8;
-    public static double FLOWER_CLOSED_POSITION = 0.1;
+    public static double FLOWER_OPEN_POSITION = 0.7;
+    public static double FLOWER_CLOSED_POSITION = 0.2;
 
     // Max power settings for intake, transfer, and shooter motors (100% full speed)
     public static double INTAKE_MAX_POWER = -1.0;
     public static double TRANSFER_MAX_POWER = -1.0;
     public static double SHOOTER_MAX_POWER = -1.0;
 
-    // Target velocity threshold for shooter motor in encoder ticks per second (higher for max speed)
-    public static double SHOOTER_TARGET_VELOCITY = 3500.0;
+    // Live Shooter Power Ratio (starts at 1.0, adjusted by side d-pad in steps of 0.05)
+    private double shooterPowerRatio = 1.0;
+    private boolean lastDpadRight = false;
+    private boolean lastDpadLeft = false;
 
     private ElapsedTime stateTimer = new ElapsedTime();
 
@@ -181,16 +183,18 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
         telemetry.addLine("Left Stick Y/X: Forward / Strafe");
         telemetry.addLine("Right Stick X : Turn Robot");
         telemetry.addLine("Left Bumper   : Hold for Robot-Relative Drive");
-        telemetry.addLine("Right Trigger : Spin-up Shooter -> Auto-Feed");
+        telemetry.addLine("Right Trigger : Spin-up Shooter (0.3s) -> Shoot & Open Gate");
         telemetry.addLine("Left Trigger  : Intake & Transfer");
         telemetry.addLine("Button A      : Reset Heading / Yaw");
-        telemetry.addLine("Dpad Up/Right : Flower Servo Open (0.8)");
-        telemetry.addLine("Dpad Down/Left: Flower Servo Closed (0.1)");
+        telemetry.addLine("Dpad Up       : Flower Servo Open (0.7)");
+        telemetry.addLine("Dpad Down     : Flower Servo Closed (0.2)");
+        telemetry.addLine("Dpad Right    : Increase Shooter Speed (+0.05)");
+        telemetry.addLine("Dpad Left     : Decrease Shooter Speed (-0.05)");
         telemetry.addLine("=============================");
 
-        // Flower Servo Dpad Controls (supports Gamepad 1 & 2, all Dpad directions)
-        boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up || gamepad1.dpad_right || gamepad2.dpad_right;
-        boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down || gamepad1.dpad_left || gamepad2.dpad_left;
+        // Flower Servo Dpad Controls (supports Gamepad 1 & 2)
+        boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up;
+        boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down;
 
         if (FlowerServo != null) {
             if (dpadUp) {
@@ -199,6 +203,19 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
                 FlowerServo.setPosition(FLOWER_CLOSED_POSITION);
             }
         }
+
+        // Side D-pad Controls (Dpad Left/Right) to adjust shooter power ratio live (starts at 1.0, steps of 0.05)
+        boolean dpadRight = gamepad1.dpad_right || gamepad2.dpad_right;
+        boolean dpadLeft = gamepad1.dpad_left || gamepad2.dpad_left;
+
+        if (dpadRight && !lastDpadRight) {
+            shooterPowerRatio = Math.min(1.0, shooterPowerRatio + 0.05);
+        }
+        if (dpadLeft && !lastDpadLeft) {
+            shooterPowerRatio = Math.max(0.0, shooterPowerRatio - 0.05);
+        }
+        lastDpadRight = dpadRight;
+        lastDpadLeft = dpadLeft;
 
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
@@ -261,20 +278,22 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
                 break;
 
             case SPINNING_UP:
-                setShooterPower(SHOOTER_MAX_POWER);
-                setTransferPower(TRANSFER_MAX_POWER);
-                setIntakePower(INTAKE_MAX_POWER);
-                setGatePosition(GATE_OPEN_POSITION);
+                // SPINNING_UP (0 to 0.3s): shooter spins up at live RPM, transfer off, gate closed
+                setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
+                setTransferPower(0.0);
+                setIntakePower(0.0);
+                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
-                } else if (currentVelocity >= SHOOTER_TARGET_VELOCITY || stateTimer.seconds() > 0.2) {
+                } else if (stateTimer.seconds() >= 0.3) {
                     currentState = RobotState.FEEDING;
                 }
                 break;
 
             case FEEDING:
-                setShooterPower(SHOOTER_MAX_POWER);
+                // FEEDING / SHOOTING (after 0.3s): shooter runs, transfer & intake run, gate OPEN
+                setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
                 setGatePosition(GATE_OPEN_POSITION);
@@ -287,8 +306,8 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
         telemetry.addData("Flower Servo Status", FlowerServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", FlowerServo.getPosition()) : "NOT FOUND (Check Robot Config)");
         telemetry.addData("Robot State", currentState);
+        telemetry.addData("Shooter Power Ratio", "%.2f (%.0f%%)", shooterPowerRatio, shooterPowerRatio * 100);
         telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
-        telemetry.addData("Target Velocity Threshold", "%.2f", SHOOTER_TARGET_VELOCITY);
     }
 
     private void setShooterPower(double power) {
