@@ -208,7 +208,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
             case INTAKING:
                 // INTAKING: run both intake and transfer, gate closed
                 setShooterPower(0.0);
-                setTransferPower(1.0);
+                setTransferPower(-1.0);
                 setIntakePower(-1.0);
                 setGatePosition(GATE_CLOSED_POSITION);
 
@@ -221,7 +221,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
             case SPINNING_UP:
                 // SPINNING_UP: shooter motor max speed, gate closed, transfer off
-                setShooterPower(-1.0);
+                setShooterPower(-10.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_CLOSED_POSITION);
@@ -235,8 +235,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
             case FEEDING:
                 // FEEDING: open gate, transfer running, shooter running at speed
-                setShooterPower(-1.0);
-                setTransferPower(1.0);
+                setShooterPower(-10.0);
+                setTransferPower(-1.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_OPEN_POSITION);
 
