@@ -54,8 +54,8 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
     public static double GATE_CLOSED_POSITION = 0.0;
     public static double GATE_OPEN_POSITION = 1.0;
 
-    // Target velocity threshold for shooter motor in encoder ticks per second
-    public static double SHOOTER_TARGET_VELOCITY = 2000.0;
+    // Target velocity threshold for shooter motor in encoder ticks per second (higher for max speed)
+    public static double SHOOTER_TARGET_VELOCITY = 3500.0;
 
     @Override
     public void init() {
@@ -127,6 +127,13 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
     }
 
     @Override
+    public void start() {
+        if (FlowerServo != null) {
+            FlowerServo.setPosition(0.8);
+        }
+    }
+
+    @Override
     public void loop() {
         telemetry.addLine("=== CONTROLLER 1 CONTROLS ===");
         telemetry.addLine("Left Stick Y/X: Forward / Strafe");
@@ -135,7 +142,17 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
         telemetry.addLine("Right Trigger : Spin-up Shooter -> Auto-Feed");
         telemetry.addLine("Left Trigger  : Intake & Transfer");
         telemetry.addLine("Button A      : Reset Heading / Yaw");
+        telemetry.addLine("Dpad Up/Down  : Flower Servo (0.8 / 0.1)");
         telemetry.addLine("=============================");
+
+        // Flower Servo Dpad Controls (Flower servo is only moved by these dpad buttons)
+        if (FlowerServo != null) {
+            if (gamepad1.dpad_up) {
+                FlowerServo.setPosition(0.8);
+            } else if (gamepad1.dpad_down) {
+                FlowerServo.setPosition(0.1);
+            }
+        }
 
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
@@ -196,7 +213,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
                 break;
 
             case SPINNING_UP:
-                setShooterPower(-10.0);
+                setShooterPower(-1.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_CLOSED_POSITION);
