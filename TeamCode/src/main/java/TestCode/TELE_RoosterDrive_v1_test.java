@@ -262,9 +262,9 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
             case SPINNING_UP:
                 setShooterPower(SHOOTER_MAX_POWER);
-                setTransferPower(0.0);
-                setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
+                setTransferPower(TRANSFER_MAX_POWER);
+                setIntakePower(INTAKE_MAX_POWER);
+                setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;

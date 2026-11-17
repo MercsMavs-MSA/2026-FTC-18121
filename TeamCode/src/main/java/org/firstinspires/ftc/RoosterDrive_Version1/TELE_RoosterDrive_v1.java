@@ -270,11 +270,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 break;
 
             case SPINNING_UP:
-                // SPINNING_UP: shooter motor max speed, gate closed, transfer off
+                // SPINNING_UP: run intake, transfer, shooter all at max speed immediately & open gate
                 setShooterPower(SHOOTER_MAX_POWER);
-                setTransferPower(0.0);
-                setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
+                setTransferPower(TRANSFER_MAX_POWER);
+                setIntakePower(INTAKE_MAX_POWER);
+                setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
