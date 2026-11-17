@@ -127,7 +127,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     @Override
     public void start() {
-        flowerServo.setPosition(0.6);
+        flowerServo.setPosition(0.8);
     }
 
     @Override
@@ -145,7 +145,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
 
         if(gamepad1.dpad_up) {
-            flowerServo.setPosition(0.6);
+            flowerServo.setPosition(0.8);
         }
 
         if(gamepad1.dpad_down) {
