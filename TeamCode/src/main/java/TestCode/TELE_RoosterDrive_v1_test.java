@@ -128,10 +128,14 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
     @Override
     public void loop() {
-        telemetry.addLine("Press A to reset Yaw");
-        telemetry.addLine("Hold left bumper to drive in robot relative");
-        telemetry.addLine("The left joystick sets the robot direction");
-        telemetry.addLine("Moving the right joystick left and right turns the robot");
+        telemetry.addLine("=== CONTROLLER 1 CONTROLS ===");
+        telemetry.addLine("Left Stick Y/X: Forward / Strafe");
+        telemetry.addLine("Right Stick X : Turn Robot");
+        telemetry.addLine("Left Bumper   : Hold for Robot-Relative Drive");
+        telemetry.addLine("Right Trigger : Spin-up Shooter -> Auto-Feed");
+        telemetry.addLine("Left Trigger  : Intake & Transfer");
+        telemetry.addLine("Button A      : Reset Heading / Yaw");
+        telemetry.addLine("=============================");
 
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
@@ -180,7 +184,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
             case INTAKING:
                 setShooterPower(0.0);
-                setTransferPower(1.0);
+                setTransferPower(-1.0);
                 setIntakePower(-1.0);
                 setGatePosition(GATE_CLOSED_POSITION);
 
@@ -206,7 +210,7 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
 
             case FEEDING:
                 setShooterPower(-1.0);
-                setTransferPower(1.0);
+                setTransferPower(-1.0);
                 setIntakePower(0.0);
                 setGatePosition(GATE_OPEN_POSITION);
 

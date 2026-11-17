@@ -132,10 +132,15 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
     @Override
     public void loop() {
-        telemetry.addLine("Press A to reset Yaw");
-        telemetry.addLine("Hold left bumper to drive in robot relative");
-        telemetry.addLine("The left joystick sets the robot direction");
-        telemetry.addLine("Moving the right joystick left and right turns the robot");
+        telemetry.addLine("=== CONTROLLER 1 CONTROLS ===");
+        telemetry.addLine("Left Stick Y/X: Forward / Strafe");
+        telemetry.addLine("Right Stick X : Turn Robot");
+        telemetry.addLine("Left Bumper   : Hold for Robot-Relative Drive");
+        telemetry.addLine("Right Trigger : Spin-up Shooter -> Auto-Feed");
+        telemetry.addLine("Left Trigger  : Intake & Transfer");
+        telemetry.addLine("Button A      : Reset Heading / Yaw");
+        telemetry.addLine("Dpad Up/Down  : Flower Servo (0.6 / 0.1)");
+        telemetry.addLine("=============================");
 
 
 
