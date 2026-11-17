@@ -36,7 +36,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
 
     Servo flowerServo;
-    Servo GateServo;
+    //Servo GateServo;
 
     //Shooters + Intake Motor
     DcMotorEx shooter; //Based of what I can see on cad
@@ -91,7 +91,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 }
             }
         }
-        try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e1) {
+      /* try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e1) {
             try { GateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) {
                 try { GateServo = hardwareMap.get(Servo.class, "gate"); } catch (Exception e3) {
                     try { GateServo = hardwareMap.get(Servo.class, "Gate"); } catch (Exception e4) {
@@ -99,7 +99,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                     }
                 }
             }
-        }
+        }*/
 
         try { shooter = hardwareMap.get(DcMotorEx.class, "shooterMotor"); } catch (Exception e1) {
             try { shooter = hardwareMap.get(DcMotorEx.class, "BottomShooter"); } catch (Exception e2) {
@@ -196,13 +196,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up;
         boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down;
 
-        if (flowerServo != null) {
             if (dpadUp) {
                 flowerServo.setPosition(FLOWER_OPEN_POSITION);
             } else if (dpadDown) {
                 flowerServo.setPosition(FLOWER_CLOSED_POSITION);
             }
-        }
 
         // Side D-pad Controls (Dpad Left/Right) to adjust shooter power ratio live (starts at 1.0, steps of 0.05)
         boolean dpadRight = gamepad1.dpad_right || gamepad2.dpad_right;
@@ -314,7 +312,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
 
         telemetry.addData("Flower Servo Status", flowerServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", flowerServo.getPosition()) : "NOT FOUND (Check Robot Config)");
-        telemetry.addData("Gate Servo Status", GateServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", GateServo.getPosition()) : "NOT FOUND (Check Robot Config)");
+        //telemetry.addData("Gate Servo Status", GateServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", GateServo.getPosition()) : "NOT FOUND (Check Robot Config)");
         telemetry.addData("Robot State", currentState);
         telemetry.addData("Shooter Power Ratio", "%.2f (%.0f%%)", shooterPowerRatio, shooterPowerRatio * 100);
         telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
@@ -338,11 +336,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    private void setGatePosition(double position) {
+    /*private void setGatePosition(double position) {
         if (GateServo != null) {
             GateServo.setPosition(position);
         }
-    }
+    }*/
 
     private void driveFieldRelative(double forward, double right, double rotate) {
         // First, convert direction being asked to drive to polar coordinates (0 deg = Forward)
