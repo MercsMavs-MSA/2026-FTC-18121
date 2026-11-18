@@ -53,8 +53,8 @@ public class TELE_RoosterDrive_v1_test extends OpMode {
     // Gate Servo Position & Subsystem Power Constants
     public static double GATE_CLOSED_POSITION = 0.0;
     public static double GATE_OPEN_POSITION = 1.0;
-    public static double FLOWER_OPEN_POSITION = 0.7;
-    public static double FLOWER_CLOSED_POSITION = 0.2;
+    public static double FLOWER_OPEN_POSITION = 0.2;
+    public static double FLOWER_CLOSED_POSITION = 0.7;
 
     // Max power settings for intake, transfer, and shooter motors (100% full speed)
     public static double INTAKE_MAX_POWER = -1.0;
