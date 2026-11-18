@@ -180,6 +180,9 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         if (flowerServo != null) {
             flowerServo.setPosition(FLOWER_OPEN_POSITION);
         }
+        if (gateServo != null) {
+            gateServo.setPosition(GATE_CLOSED_POSITION);
+        }
     }
 
     @Override
@@ -191,36 +194,31 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         telemetry.addLine("Right Trigger : Spin-up Shooter (0.3s) -> Shoot & Open Gate");
         telemetry.addLine("Left Trigger  : Intake & Transfer");
         telemetry.addLine("Button A      : Reset Heading / Yaw");
-        telemetry.addLine("Dpad Up       : Flower Servo Open (0.7)");
-        telemetry.addLine("Dpad Down     : Flower Servo Closed (0.2)");
-        telemetry.addLine("Dpad Right    : Increase Shooter Speed (+0.05)");
-        telemetry.addLine("Dpad Left     : Decrease Shooter Speed (-0.05)");
+        telemetry.addLine("Dpad Left     : Toggle Gate Servo (Switch)");
+        telemetry.addLine("Dpad Right    : Toggle Flower Servo (Switch)");
         telemetry.addLine("=============================");
 
-        // Flower Servo Dpad Controls (supports Gamepad 1 & 2)
-        boolean dpadUp = gamepad1.dpad_up || gamepad2.dpad_up;
-        boolean dpadDown = gamepad1.dpad_down || gamepad2.dpad_down;
-
-        if (flowerServo != null) {
-            if (dpadUp) {
-                flowerServo.setPosition(FLOWER_OPEN_POSITION);
-            } else if (dpadDown) {
-                flowerServo.setPosition(FLOWER_CLOSED_POSITION);
+//switch for gate
+        boolean dpadLeft = gamepad1.dpad_left || gamepad2.dpad_left;
+        if (dpadLeft && !lastDpadLeft && gateServo != null) {
+            if (Math.abs(gateServo.getPosition() - GATE_OPEN_POSITION) < 0.1) {
+                gateServo.setPosition(GATE_CLOSED_POSITION);
+            } else {
+                gateServo.setPosition(GATE_OPEN_POSITION);
             }
         }
+        lastDpadLeft = dpadLeft;
 
-        // Side D-pad Controls (Dpad Left/Right) to adjust shooter power ratio live (starts at 1.0, steps of 0.05)
+        //switch for flower
         boolean dpadRight = gamepad1.dpad_right || gamepad2.dpad_right;
-        boolean dpadLeft = gamepad1.dpad_left || gamepad2.dpad_left;
-
-        if (dpadRight && !lastDpadRight) {
-            shooterPowerRatio = Math.min(1.0, shooterPowerRatio + 0.01);
-        }
-        if (dpadLeft && !lastDpadLeft) {
-            shooterPowerRatio = Math.max(0.0, shooterPowerRatio - 0.01);
+        if (dpadRight && !lastDpadRight && flowerServo != null) {
+            if (Math.abs(flowerServo.getPosition() - FLOWER_OPEN_POSITION) < 0.1) {
+                flowerServo.setPosition(FLOWER_CLOSED_POSITION);
+            } else {
+                flowerServo.setPosition(FLOWER_OPEN_POSITION);
+            }
         }
         lastDpadRight = dpadRight;
-        lastDpadLeft = dpadLeft;
 
         // Reset Pinpoint Odometry Heading on button A
         if (gamepad1.a && pinpoint != null) {
@@ -264,11 +262,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
         switch (currentState) {
             case IDLE:
-                // IDLE: default state - all motors off, gate closed
+                // IDLE: default state - all motors off
                 setShooterPower(0.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -279,11 +276,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 break;
 
             case INTAKING:
-                // INTAKING: run both intake and transfer at max speed, gate closed
+                // INTAKING: run both intake and transfer at max speed
                 setShooterPower(0.0);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
-                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -294,11 +290,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 break;
 
             case SPINNING_UP:
-                //SPINNING_UP (0 to 0.3s): shooter spins up at live RPM, transfer off, gate closed
+                //SPINNING_UP (0 to 0.3s): shooter spins up at live RPM, transfer off
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
@@ -315,6 +310,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
+                    setGatePosition(GATE_CLOSED_POSITION);
                     currentState = RobotState.IDLE;
                 }
                 break;
