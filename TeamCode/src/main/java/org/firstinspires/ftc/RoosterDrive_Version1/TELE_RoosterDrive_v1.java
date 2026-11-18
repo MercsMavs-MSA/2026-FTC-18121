@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.RoosterDrive_Version1;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -36,7 +35,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
 
     Servo flowerServo;
-    //Servo GateServo;
+    Servo gateServo;
 
     //Shooters + Intake Motor
     DcMotorEx shooter; //Based of what I can see on cad
@@ -57,10 +56,10 @@ public class TELE_RoosterDrive_v1 extends OpMode {
     private RobotState currentState = RobotState.IDLE;
 
     // Gate Servo Position & Subsystem Power Constants
-    public static double GATE_CLOSED_POSITION = 0;
-    public static double GATE_OPEN_POSITION = 0;
-    public static double FLOWER_OPEN_POSITION = 0.2;
-    public static double FLOWER_CLOSED_POSITION = 0.7;
+    public static double GATE_CLOSED_POSITION = 0.6;
+    public static double GATE_OPEN_POSITION = 0.4;
+    public static double FLOWER_OPEN_POSITION = 0.8;
+    public static double FLOWER_CLOSED_POSITION = 0.2;
 
     // Max power settings for intake, transfer, and shooter motors (100% full speed)
     public static double INTAKE_MAX_POWER = -1.0;
@@ -91,15 +90,15 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 }
             }
         }
-      /* try { GateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e1) {
-            try { GateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) {
-                try { GateServo = hardwareMap.get(Servo.class, "gate"); } catch (Exception e3) {
-                    try { GateServo = hardwareMap.get(Servo.class, "Gate"); } catch (Exception e4) {
-                        GateServo = null;
+       try { gateServo = hardwareMap.get(Servo.class, "GateServo"); } catch (Exception e1) {
+            try { gateServo = hardwareMap.get(Servo.class, "gateServo"); } catch (Exception e2) {
+                try { gateServo = hardwareMap.get(Servo.class, "gate"); } catch (Exception e3) {
+                    try { gateServo = hardwareMap.get(Servo.class, "Gate"); } catch (Exception e4) {
+                        gateServo = null;
                     }
                 }
             }
-        }*/
+        }
 
         try { shooter = hardwareMap.get(DcMotorEx.class, "shooterMotor"); } catch (Exception e1) {
             try { shooter = hardwareMap.get(DcMotorEx.class, "BottomShooter"); } catch (Exception e2) {
@@ -151,8 +150,14 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+
         // Shooters + Intake Motor (RUN_WITHOUT_ENCODER sets 100% max speed full raw voltage)
-        if (shooter != null) shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        if (shooter != null) shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); //TODO: Check?
         if (transfer != null) transfer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         if (intake != null) intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
@@ -229,6 +234,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
             driveFieldRelative(gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x);
         }
 
+
+
         // Run subsystem State Machine periodically in loop
         updateStateMachine();
 
@@ -261,7 +268,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(0.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                //setGatePosition(GATE_CLOSED_POSITION);
+                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -276,7 +283,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(0.0);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
-                //setGatePosition(GATE_CLOSED_POSITION);
+                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -291,11 +298,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
-                //setGatePosition(GATE_CLOSED_POSITION);
+                setGatePosition(GATE_CLOSED_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
-                } else if (stateTimer.seconds() >= 0.3) {
+                } else if (stateTimer.seconds() >= 1) {
                     currentState = RobotState.FEEDING;
                 }
                 break;
@@ -305,7 +312,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
-                //setGatePosition(GATE_OPEN_POSITION);
+                setGatePosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
@@ -314,7 +321,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
 
         telemetry.addData("Flower Servo Status", flowerServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", flowerServo.getPosition()) : "NOT FOUND (Check Robot Config)");
-        //telemetry.addData("Gate Servo Status", GateServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", GateServo.getPosition()) : "NOT FOUND (Check Robot Config)");
+        telemetry.addData("Gate Servo Status", gateServo != null ? String.format(java.util.Locale.US, "Connected (Pos: %.2f)", gateServo.getPosition()) : "NOT FOUND (Check Robot Config)");
         telemetry.addData("Robot State", currentState);
         telemetry.addData("Shooter Power Ratio", "%.2f (%.0f%%)", shooterPowerRatio, shooterPowerRatio * 100);
         telemetry.addData("Shooter Velocity (ticks/sec)", "%.2f", currentVelocity);
@@ -338,11 +345,11 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         }
     }
 
-    /*private void setGatePosition(double position) {
-        if (GateServo != null) {
-            GateServo.setPosition(position);
+    private void setGatePosition(double position) {
+        if (gateServo != null) {
+            gateServo.setPosition(position);
         }
-    }*/
+    }
 
     private void driveFieldRelative(double forward, double right, double rotate) {
         // First, convert direction being asked to drive to polar coordinates (0 deg = Forward)
