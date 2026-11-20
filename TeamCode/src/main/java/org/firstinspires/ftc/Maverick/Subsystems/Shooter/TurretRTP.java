@@ -10,7 +10,7 @@ public class TurretRTP {
 
     //RUN TO POSITION VERSION USING ONLY P, MOST LIKELY LESS PRECISE
 
-    public static double TICKS_PER_TURRET_REV = 145.1 * 200.0 / 48.0;
+    public static double TICKS_PER_TURRET_REV = 103.8 * 200.0 / 48.0;
     public static double MAX_POWER = 0.8;         // speed cap in RUN_TO_POSITION
     public static double TOLERANCE_DEG = 1.0;
 

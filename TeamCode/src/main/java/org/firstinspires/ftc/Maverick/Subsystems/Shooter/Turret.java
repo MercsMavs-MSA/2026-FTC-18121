@@ -11,7 +11,7 @@ public class Turret {
     // 200/48 ratio
     // CUSTOM PID VERSION
 
-    public static double TICKS_PER_TURRET_REV = 145.1 * 200.0 / 48.0;
+    public static double TICKS_PER_TURRET_REV = 103.8 * 200.0 / 48.0;
     public static double kP = 1.5;   // power per radian of error, placeholder
     public static double kD = 0.05;  // power per rad/s of turret speed, placeholder
     public static double kS = 0.04;  // minimum power to overcome friction, placeholder
