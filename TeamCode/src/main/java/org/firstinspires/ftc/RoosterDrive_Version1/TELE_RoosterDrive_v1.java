@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -155,6 +156,8 @@ public class TELE_RoosterDrive_v1 extends OpMode {
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        intake.setDirection(DcMotorSimple.Direction.REVERSE);
+
 
         // Shooters + Intake Motor (RUN_WITHOUT_ENCODER sets 100% max speed full raw voltage)
         if (shooter != null) shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); //TODO: Check?
@@ -266,6 +269,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(0.0);
                 setTransferPower(0.0);
                 setIntakePower(0.0);
+                gateServo.setPosition(GATE_CLOSED_POSITION);
 
                 if (rightTriggerPressed) {
                     currentState = RobotState.SPINNING_UP;
@@ -297,7 +301,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
-                } else if (stateTimer.seconds() >= 1) {
+                } else if (stateTimer.seconds() >= 2) {
                     currentState = RobotState.FEEDING;
                 }
                 break;
@@ -307,6 +311,7 @@ public class TELE_RoosterDrive_v1 extends OpMode {
                 setShooterPower(SHOOTER_MAX_POWER * shooterPowerRatio);
                 setTransferPower(TRANSFER_MAX_POWER);
                 setIntakePower(INTAKE_MAX_POWER);
+                gateServo.setPosition(GATE_OPEN_POSITION);
 
                 if (!rightTriggerPressed) {
                     currentState = RobotState.IDLE;
