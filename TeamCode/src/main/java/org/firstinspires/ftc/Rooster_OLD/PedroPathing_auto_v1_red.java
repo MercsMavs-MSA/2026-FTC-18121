@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.RoosterDrive_Version1;
+package org.firstinspires.ftc.Rooster_OLD;
 
 import com.pedropathing.api.Paths;
 import com.pedropathing.api.PoseFactory;
@@ -11,32 +11,31 @@ import static com.pedropathing.ivy.Scheduler.schedule;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-// Import Constants from the pedro sub-package (matching your working RED opmode)
 import org.firstinspires.ftc.RoosterDrive_Version1.pedro.Constants;
-
-@Autonomous(name = "PedroPathing_auto_v1_blue", group = "Autonomous")
-public class PedroPathing_auto_v1_blue extends LinearOpMode {
+@Disabled
+@Autonomous(name = "PedroPathing_auto_v1", group = "Autonomous")
+public class PedroPathing_auto_v1_red extends LinearOpMode {
 
     private Follower follower;
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(84.8549, 131.5582, 270);
-    private final Pose path1 = poseFactory.of(85.2248, 105.1778, 270);
-    private final Pose point2Start = poseFactory.of(85.2248, 105.1778, 270);
-    private final Pose point2 = poseFactory.of(121.1709, 138.4347, 0);
-    private final Pose point3 = poseFactory.of(138.3192, 138.1923, -0.8099);
-    private final Pose point4Start = poseFactory.of(138.3192, 138.1923, -112);
-    private final Pose point4 = poseFactory.of(90.2877, 17.9179, 90);
-    private final Pose point5Start = poseFactory.of(90.2877, 17.9179, 90);
-    private final Pose point5 = poseFactory.of(83.7019, 31.8502, 90);
-    private final Pose point6 = poseFactory.of(94.3891, 1.983, -70.3115);
-    private final Pose point7 = poseFactory.of(89.2795, 28.0296, 101.099);
-    private final Pose point8 = poseFactory.of(137.7396, 92.9932, 53.2786);
-    private final Pose point9Start = poseFactory.of(137.7396, 92.9932, 53);
-    private final Pose point9 = poseFactory.of(84.1748, 138.9661, 270);
+    private final Pose start = poseFactory.of(56, 8, 90);
+    private final Pose path1 = poseFactory.of(56, 36, 90);
+    private final Pose point2 = poseFactory.of(23.5751, 2.1435, -133.7627);
+    private final Pose point3 = poseFactory.of(3.0204, 1.9153, -179.3639);
+    private final Pose point4 = poseFactory.of(35.229, 118.2144, 74.5201);
+    private final Pose point5Start = poseFactory.of(35.229, 118.2144, 0);
+    private final Pose point5 = poseFactory.of(56.9734, 117.3273, 270);
+    private final Pose point6 = poseFactory.of(46.8884, 138.7055, 115.2553);
+    private final Pose point7Start = poseFactory.of(46.8884, 138.7055, 115);
+    private final Pose point7 = poseFactory.of(56.7394, 109.402, 270);
+    private final Pose point8 = poseFactory.of(3.5637, 49.5114, -131.6012);
+    private final Pose point9Start = poseFactory.of(3.5637, 49.5114, -132);
+    private final Pose point9 = poseFactory.of(55.3498, 1.0633, 90);
 
     // Autonomous routine
     public Command autoRoutine() {
@@ -56,6 +55,8 @@ public class PedroPathing_auto_v1_blue extends LinearOpMode {
     @Override
     public void runOpMode() {
         Scheduler.reset();
+
+        // This will now correctly find Constants if Constants.java is in this same package folder
         follower = Constants.create(hardwareMap);
         if (follower != null) {
             follower.setPose(start);
@@ -91,7 +92,7 @@ public class PedroPathing_auto_v1_blue extends LinearOpMode {
     }
 
     public Path path2() {
-        return Paths.line(point2Start, point2).linear(point2Start, point2);
+        return Paths.line(path1, point2).tangent();
     }
 
     public Path path3() {
@@ -99,7 +100,7 @@ public class PedroPathing_auto_v1_blue extends LinearOpMode {
     }
 
     public Path path4() {
-        return Paths.line(point4Start, point4).linear(point4Start, point4);
+        return Paths.line(point3, point4).tangent();
     }
 
     public Path path5() {
@@ -111,7 +112,7 @@ public class PedroPathing_auto_v1_blue extends LinearOpMode {
     }
 
     public Path path7() {
-        return Paths.line(point6, point7).tangent();
+        return Paths.line(point7Start, point7).linear(point7Start, point7);
     }
 
     public Path path8() {
