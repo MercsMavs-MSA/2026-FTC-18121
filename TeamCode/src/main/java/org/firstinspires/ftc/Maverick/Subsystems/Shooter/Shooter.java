@@ -6,42 +6,38 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.Maverick.Subsystems.Drive.Drive;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
+/**
+ * Turret aims at the HIVE (odometry + vision correction). The flywheel uses one of two constant speeds:
+ * CLOSE_RPM (default) or FAR_RPM. Back toggles between them (Robot.java).
+ */
 public class Shooter {
 
     public enum ShooterState {
         STOW,
-        IDLE_FIXED,
-        IDLE_HIVE,
-        IDLE_CLOSE,
-        SHOOT_HIVE,
-        SHOOT_FIXED,
-        SHOOT_CLOSE,
+        IDLE,     // not shooting: flywheel at the idle roll, turret parks home (or keeps aiming, see TRACK_WHEN_IDLE)
+        SHOOT,    // RT / A held: turret aims, flywheel at CLOSE_RPM or FAR_RPM
     }
 
-    // FALLBACK ("fixed") mode: no odometry, no shot table. The turret drives to one set angle and the
-    // flywheel spins to one set speed; the driver aims by pointing the robot, from a known spot.
-    public static double FIXED_RPM = 3600.0;      // flywheel speed for the fallback spot (true wheel rpm, old 1700 x 2.25), placeholder: calibrate
-    public static double FIXED_TURRET_DEG = 180.0;   // turret angle: 0 = zero stop (shoots out the BACK), 180 = shoots out the FRONT
+    // ===== The two shot speeds (true wheel rpm) =====
+    public static double CLOSE_RPM = 3250.0;   // default at the start of every OpMode
+    public static double FAR_RPM = 3600.0;
 
-    // CLOSE mode: same idea as FIXED, for a shot from right up against the HIVE. Low flywheel speed,
-    // turret straight out the front; the driver pushes up to the HIVE and points the robot at it.
-    public static double CLOSE_RPM = 3200.0;         // placeholder: calibrate at the close-up spot (true wheel rpm)
-    public static double CLOSE_TURRET_DEG = 180.0;   // 180 = shoots out the FRONT
-
-    // HOME: when not shooting, the turret parks here so the wiring isn't left stretched out.
+    // ===== Turret =====
+    // false: the turret aims only while shooting and parks at HOME_DEG otherwise (keeps the wiring slack).
+    // true:  the turret keeps aiming at the HIVE all the time.
+    public static boolean TRACK_WHEN_IDLE = false;
     public static double HOME_DEG = 0.0;          // 0 = the zero position it starts in
     public static double HOME_DELAY_S = 0.5;      // wait this long after shooting ends, so a quick re-press doesn't swing it home and back
 
     // IDLE ROLL: when not shooting, keep the flywheel turning slowly so spin-up starts from here, not 0.
-    public static double IDLE_RPM = 1500.0;      // true wheel rpm (old 500 x 2.25); 0 = coast to a stop when idle
+    public static double IDLE_RPM = 1500.0;      // true wheel rpm; 0 = coast to a stop when idle
 
     public ShooterState shooterState = ShooterState.STOW;
-    public boolean fixedShoot = false;    // right stick press: fallback fixed shot
-    public boolean closeShoot = false;    // dpad left: close-up shot (wins over fixedShoot if both are on)
+    public boolean farShot = false;     // false = CLOSE_RPM (default), true = FAR_RPM
 
     public double turretBias = 0.0;     // radians, added to the turret setpoint
-    public double flywheelBias = 0.0;   // rpm, added to the table rpm
-    private double aimCorrectionRad = 0.0;   // from Vision; only used when aiming at the HIVE
+    public double flywheelBias = 0.0;   // rpm, added to the shot speed
+    private double aimCorrectionRad = 0.0;   // from Vision
 
     private final Flywheel flywheel;
     private final Turret turret;
@@ -68,33 +64,23 @@ public class Shooter {
         calculatedShot = ShooterCalculator.solve(
                 drive.getX(), drive.getY(), drive.getHeadingRad(),
                 targetX, targetY,
-                turret.getAngleRad(), aimCorrectionRad, flywheelBias);
+                turret.getAngleRad(), aimCorrectionRad);
 
         switch (shooterState) {
-            case STOW:
-                azimuthAngle = 0.0;
-                flywheelVel = 0.0;
+            case SHOOT:
+                azimuthAngle = calculatedShot.turretAngleRad;
+                flywheelVel = shotRpm() + flywheelBias;
                 break;
-            case IDLE_HIVE:
-            case IDLE_FIXED:
-            case IDLE_CLOSE:
-                // not shooting: hold where it is for HOME_DELAY_S, then park at home (no live tracking)
-                if (goHome) azimuthAngle = Math.toRadians(HOME_DEG);
+            case IDLE:
+                if (TRACK_WHEN_IDLE) {
+                    azimuthAngle = calculatedShot.turretAngleRad;
+                } else if (goHome) {
+                    azimuthAngle = Math.toRadians(HOME_DEG);   // hold where it is for HOME_DELAY_S, then park
+                }
                 // slow roll; off in full-power test mode, where any target would mean full power
                 flywheelVel = Flywheel.FULL_POWER_MODE ? 0.0 : IDLE_RPM;
                 break;
-            case SHOOT_HIVE:
-                azimuthAngle = calculatedShot.turretAngleRad;
-                flywheelVel = calculatedShot.flywheelRpm;
-                break;
-            case SHOOT_FIXED:
-                azimuthAngle = Math.toRadians(FIXED_TURRET_DEG);
-                flywheelVel = FIXED_RPM + flywheelBias;
-                break;
-            case SHOOT_CLOSE:
-                azimuthAngle = Math.toRadians(CLOSE_TURRET_DEG);
-                flywheelVel = CLOSE_RPM + flywheelBias;
-                break;
+            case STOW:
             default:
                 azimuthAngle = 0.0;
                 flywheelVel = 0.0;
@@ -107,28 +93,25 @@ public class Shooter {
         flywheel.update();
     }
 
+    /** The selected shot speed: CLOSE_RPM or FAR_RPM. */
+    public double shotRpm() {
+        return farShot ? FAR_RPM : CLOSE_RPM;
+    }
+
+    public void toggleShotSpeed() {
+        farShot = !farShot;
+    }
+
     public void setShooterState(ShooterState state) {
         shooterState = state;
     }
 
     public void startShooter() {
-        if (closeShoot) {
-            setShooterState(ShooterState.SHOOT_CLOSE);
-        } else if (fixedShoot) {
-            setShooterState(ShooterState.SHOOT_FIXED);
-        } else {
-            setShooterState(ShooterState.SHOOT_HIVE);
-        }
+        setShooterState(ShooterState.SHOOT);
     }
 
     public void idleShooter() {
-        if (closeShoot) {
-            setShooterState(ShooterState.IDLE_CLOSE);
-        } else if (fixedShoot) {
-            setShooterState(ShooterState.IDLE_FIXED);
-        } else {
-            setShooterState(ShooterState.IDLE_HIVE);
-        }
+        setShooterState(ShooterState.IDLE);
     }
 
     /** Vision's aim correction in radians (+ = aim further left / CCW). Pass 0 for odometry only. */
@@ -151,8 +134,7 @@ public class Shooter {
     }
 
     public boolean isShooting() {
-        return shooterState == ShooterState.SHOOT_HIVE || shooterState == ShooterState.SHOOT_FIXED
-                || shooterState == ShooterState.SHOOT_CLOSE;
+        return shooterState == ShooterState.SHOOT;
     }
 
     /** Driver hint only: the flywheel is spinning for a shot and is at speed. Nothing waits on this. */
@@ -160,9 +142,9 @@ public class Shooter {
         return isShooting() && flywheel.atSpeed();
     }
 
-    /** "HIVE", "FIXED" or "CLOSE", for telemetry. */
-    public String modeName() {
-        return closeShoot ? "CLOSE" : fixedShoot ? "FIXED" : "HIVE";
+    /** "CLOSE" or "FAR", for telemetry. */
+    public String shotName() {
+        return farShot ? "FAR" : "CLOSE";
     }
 
     public Turret getTurret() { return turret; }
@@ -171,12 +153,12 @@ public class Shooter {
 
     public void addTelemetry(Telemetry telemetry) {
         telemetry.addData("Shooter State", shooterState);
-        if (closeShoot) telemetry.addData("CLOSE SHOT", "turret %.0f deg, flywheel %.0f rpm, aim with the robot", CLOSE_TURRET_DEG, CLOSE_RPM);
-        else if (fixedShoot) telemetry.addData("FALLBACK", "turret %.0f deg, flywheel %.0f rpm, aim with the robot", FIXED_TURRET_DEG, FIXED_RPM);
+        telemetry.addData("Shot speed", "%s  %.0f rpm   (Back toggles)", shotName(), shotRpm());
         telemetry.addData("Distance", "%.1f in", calculatedShot.distanceIn);
-        telemetry.addData("Turret", "%.1f / %.1f deg",
-                Math.toDegrees(turret.getAngleRad()), Math.toDegrees(azimuthAngle + turretBias));
+        telemetry.addData("Turret", "%.1f / %.1f deg%s",
+                Math.toDegrees(turret.getAngleRad()), Math.toDegrees(azimuthAngle + turretBias),
+                calculatedShot.reachable ? "" : " (target outside turret travel)");
         telemetry.addData("Flywheel", "%.0f / %.0f rpm", flywheel.getRpm(), flywheel.getTargetRpm());
-        telemetry.addData("In table range / at speed", "%b / %b", calculatedShot.valid(), readyToFire());
+        telemetry.addData("At speed", readyToFire());
     }
 }

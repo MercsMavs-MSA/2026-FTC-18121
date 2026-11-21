@@ -16,10 +16,33 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 import java.util.List;
 
+/**
+ * Controls: TWO_DRIVER picks the scheme.
+ *
+ * TWO_DRIVER = true (driver + operator)
+ *   DRIVER (gamepad 1):   sticks drive, LT intake, LB outtake, D-pad down reset heading,
+ *                         right stick press switch CELL (only when AUTO_CELL is false).
+ *                         INIT: X = blue, B = red.
+ *   OPERATOR (gamepad 2): RT (hold) rev up: flywheel to speed + turret aims,
+ *                         Y toggle the gate open / closed,
+ *                         A feed: the transfer and intake push only while A is held, so tap it to feed a little at a time,
+ *                         Back switch CLOSE / FAR speed (1 rumble = CLOSE, 2 = FAR).
+ * The gate opens only on the operator's Y. Driver intake / outtake closes it (and it stays closed), so
+ * intaking always stacks balls against the gate. While the operator holds A the intake runs too, and the
+ * driver's LT / LB don't change anything (the gate stays open).
+ *
+ * TWO_DRIVER = false (old one-driver scheme, everything on gamepad 1)
+ *   sticks drive, LT intake, LB outtake, RT (hold) spin up, A (hold) feed: opens the gate, backs off, then
+ *   feeds (same sequence as the autos), D-pad up manual gate toggle, Back CLOSE / FAR, D-pad down reset heading,
+ *   right stick press switch CELL (only when AUTO_CELL is false).
+ */
 @TeleOp(name = "18121 Maverick TeleOp", group = "Robot")
 public class Robot extends OpMode {
 
-    public enum RobotState {
+    // CONTROL SCHEME: true = driver (gamepad 1) + operator (gamepad 2), false = the old one-driver scheme.
+    public static boolean TWO_DRIVER = true;
+
+    public enum RobotState {   // one-driver scheme only
         IDLE,
         INTAKING,
         OUTTAKING,
@@ -50,7 +73,7 @@ public class Robot extends OpMode {
     private Shooter shooter;
     private Vision vision;   // null when USE_VISION was false at INIT
 
-    private RobotState robotState = RobotState.IDLE;
+    private RobotState robotState = RobotState.IDLE;   // one-driver scheme only
     private FieldConstants.HiveState hiveState = FieldConstants.HiveState.A;   // picked by field half (AUTO_CELL) or Back
 
     @Override
@@ -101,18 +124,7 @@ public class Robot extends OpMode {
         }
         drive.updatePose();
 
-        //if (gamepad1.dpadDownWasPressed()) intake.toggleFlower();
-        if (gamepad1.dpadUpWasPressed()) transfer.toggleGate();
-        if (gamepad1.backWasPressed()) {
-            shooter.fixedShoot = !shooter.fixedShoot;            // fallback: fixed turret angle + fixed rpm, no odometry
-            if (shooter.fixedShoot) shooter.closeShoot = false;
-            gamepad1.rumbleBlips(shooter.fixedShoot ? 2 : 1);   // 2 blips = fallback on, 1 = back to normal aiming
-        }
-        if (gamepad1.dpadLeftWasPressed()) {
-            shooter.closeShoot = !shooter.closeShoot;            // close-up shot: turret out the front, low rpm, no odometry
-            if (shooter.closeShoot) shooter.fixedShoot = false;
-            gamepad1.rumbleBlips(shooter.closeShoot ? 3 : 1);   // 3 blips = close shot on, 1 = back to normal aiming
-        }
+        // shared driver buttons (both schemes)
         if (gamepad1.dpadDownWasPressed()) {
             drive.resetHeading();
             if (vision != null) vision.reset();   // the old correction was for the old heading
@@ -121,7 +133,95 @@ public class Robot extends OpMode {
             setCell(hiveState == FieldConstants.HiveState.A ? FieldConstants.HiveState.B : FieldConstants.HiveState.A);
         }
 
+        // intake / transfer / shooter; returns true while shooting
+        boolean shooting = TWO_DRIVER ? twoDriverControls() : oneDriverControls();
 
+        drive.teleopDrive(gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x, false, false);
+
+        // Pick the CELL for our half of the field, but never in the middle of a shot.
+        if (AUTO_CELL && !shooting) setCell(cellForHalf(drive.getY()));
+
+        if (USE_FIELD_TARGET) {
+            TARGET_X = FieldConstants.aimX(ALLIANCE, hiveState);
+            TARGET_Y = FieldConstants.aimY(ALLIANCE, hiveState);
+        }
+        shooter.setTarget(TARGET_X, TARGET_Y);
+
+        // Odometry aims; vision (if on) nudges the aim onto the up CELL's tags.
+        if (USE_VISION && vision != null) {
+            vision.update(drive.getX(), drive.getY(), drive.getHeadingRad(),
+                    shooter.getTurret().getAngleRad(), shooter.getTurret().getVelocityRadPerSec(),
+                    TARGET_X, TARGET_Y, FieldConstants.aimTagFirstId(ALLIANCE, hiveState));
+            shooter.setAimCorrection(vision.getCorrectionRad());
+        } else {
+            shooter.setAimCorrection(0.0);
+        }
+        shooter.update();
+        intake.update();
+        transfer.update();
+
+        telemetry.addData("Alliance / CELL", "%s / cell %s (%s)", ALLIANCE, hiveState,
+                AUTO_CELL ? "auto: by field half" : "manual: right stick switches");
+        telemetry.addData("Controls", TWO_DRIVER ? "driver + operator" : "one driver");
+        telemetry.addData("Status", controlStatus);
+        telemetry.addData("Flywheel ready", shooter.readyToFire()
+                ? (TWO_DRIVER ? "YES: open gate (Y), tap A to feed" : "YES: hold A to feed") : "no");
+        drive.addTelemetry(telemetry);
+        shooter.addTelemetry(telemetry);
+        intake.addTelemetry(telemetry);
+        transfer.addTelemetry(telemetry);
+        if (USE_VISION && vision != null) vision.addTelemetry(telemetry);
+        else telemetry.addData("Vision", "OFF (Robot.USE_VISION)");
+        telemetry.update();
+    }
+
+    private String controlStatus = "";
+
+    /** Driver + operator scheme. Returns true while the operator is shooting. */
+    private boolean twoDriverControls() {
+        // ===== OPERATOR (gamepad 2) =====
+        if (gamepad2.yWasPressed()) transfer.toggleGate();
+        if (gamepad2.backWasPressed()) {
+            shooter.toggleShotSpeed();                           // CLOSE_RPM <-> FAR_RPM (starts on CLOSE)
+            gamepad2.rumbleBlips(shooter.farShot ? 2 : 1);      // 2 blips = FAR, 1 = CLOSE
+        }
+        boolean revUp = gamepad2.right_trigger > 0.5;
+        boolean feedHeld = gamepad2.a;
+
+        // ===== DRIVER (gamepad 1) =====
+        boolean intakeHeld = gamepad1.left_trigger > 0.5;
+        boolean outtakeHeld = gamepad1.left_bumper;
+
+        // Intake: runs with the operator's feed (pushes the balls up), otherwise the driver's LT / LB
+        if (feedHeld) intake.setState(Intake.State.INTAKING);
+        else if (outtakeHeld) intake.setState(Intake.State.REVERSING);
+        else if (intakeHeld) intake.setState(Intake.State.INTAKING);
+        else intake.setState(Intake.State.OFF);
+
+        // Transfer: the operator's feed wins, then the driver's outtake / intake
+        if (feedHeld) transfer.setState(Transfer.State.TAP_FEED);
+        else if (outtakeHeld) transfer.setState(Transfer.State.REVERSING);
+        else if (intakeHeld) transfer.setState(Transfer.State.INTAKING);
+        else transfer.setState(Transfer.State.OFF);
+
+        // Shooter: operator's rev up
+        if (revUp) shooter.startShooter();
+        else shooter.idleShooter();
+
+        controlStatus = String.format("driver %s | operator %s%s | gate %s",
+                outtakeHeld ? "OUTTAKING" : intakeHeld ? "INTAKING" : "-",
+                revUp ? "REV UP" : "idle", feedHeld ? " + FEEDING" : "",
+                transfer.isGateOpen() ? "OPEN" : "CLOSED");
+        return revUp || feedHeld;
+    }
+
+    /** The old one-driver scheme, all on gamepad 1. Returns true while spinning up or feeding. */
+    private boolean oneDriverControls() {
+        if (gamepad1.dpadUpWasPressed()) transfer.toggleGate();
+        if (gamepad1.backWasPressed()) {
+            shooter.toggleShotSpeed();                           // CLOSE_RPM <-> FAR_RPM (starts on CLOSE)
+            gamepad1.rumbleBlips(shooter.farShot ? 2 : 1);      // 2 blips = FAR, 1 = CLOSE
+        }
 
         boolean intakeHeld = gamepad1.left_trigger > 0.5;
 
@@ -165,43 +265,8 @@ public class Robot extends OpMode {
                 break;
         }
 
-        drive.teleopDrive(gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x, false, false);
-
-        // Pick the CELL for our half of the field, but never in the middle of a shot.
-        boolean shooting = robotState == RobotState.SPIN_UP || robotState == RobotState.FEEDING;
-        if (AUTO_CELL && !shooting) setCell(cellForHalf(drive.getY()));
-
-        if (USE_FIELD_TARGET) {
-            TARGET_X = FieldConstants.aimX(ALLIANCE, hiveState);
-            TARGET_Y = FieldConstants.aimY(ALLIANCE, hiveState);
-        }
-        shooter.setTarget(TARGET_X, TARGET_Y);
-
-        // Odometry aims; vision (if on) nudges the aim onto the up CELL's tags.
-        if (USE_VISION && vision != null) {
-            vision.update(drive.getX(), drive.getY(), drive.getHeadingRad(),
-                    shooter.getTurret().getAngleRad(), shooter.getTurret().getVelocityRadPerSec(),
-                    TARGET_X, TARGET_Y, FieldConstants.aimTagFirstId(ALLIANCE, hiveState));
-            shooter.setAimCorrection(vision.getCorrectionRad());
-        } else {
-            shooter.setAimCorrection(0.0);
-        }
-        shooter.update();
-        intake.update();
-        transfer.update();
-
-        telemetry.addData("Alliance / CELL", "%s / cell %s (%s)", ALLIANCE, hiveState,
-                AUTO_CELL ? "auto: by field half" : "manual: right stick switches");
-        telemetry.addData("Robot State", robotState);
-        telemetry.addData("Shooter mode", "%s   (Back = FIXED, dpad left = CLOSE)", shooter.modeName());
-        telemetry.addData("Flywheel ready", shooter.readyToFire() ? "YES: hold A to feed" : "no");
-        drive.addTelemetry(telemetry);
-        shooter.addTelemetry(telemetry);
-        intake.addTelemetry(telemetry);
-        transfer.addTelemetry(telemetry);
-        if (USE_VISION && vision != null) vision.addTelemetry(telemetry);
-        else telemetry.addData("Vision", "OFF (Robot.USE_VISION)");
-        telemetry.update();
+        controlStatus = robotState.toString();
+        return robotState == RobotState.SPIN_UP || robotState == RobotState.FEEDING;
     }
 
     /**

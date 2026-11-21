@@ -29,7 +29,7 @@ public class Flywheel {
     public static double BANG_BAND_RPM = 90.0;   // sim: 200 held 3 quick balls within 0.5%; 0 (pure bang-bang) overshot ~4%
     public static double FF_TOP_RPM = 3600.0;   // MEASURE: wheel rpm at full power (FULL_POWER_MODE) on a charged battery
     public static double FF_VOLTAGE = 12.5;     // battery voltage when FF_TOP_RPM was measured
-    public static double HOLD_KP = 0.0018;      // extra power per rpm below target inside the band
+    public static double HOLD_KP = 0.0017;      // extra power per rpm below target inside the band
 
     // ===== HUB_PIDF settings =====
     public static boolean USE_PIDF = true;

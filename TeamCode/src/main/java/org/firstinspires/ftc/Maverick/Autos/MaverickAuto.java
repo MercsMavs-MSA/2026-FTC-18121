@@ -21,9 +21,10 @@ import java.util.List;
 
 /**
  * Simple autonomous, no path planner:
- *   1. Strafe from the start pose to x = SHOOT_X (same y, same heading), held on line by the Pinpoint.
+ *   1. Drive from the start pose to the shooting spot (SHOOT_X, SHOOT_Y), same heading, held on line by the Pinpoint.
  *   2. Aim at the HIVE's starting CELL (A) and spin up, then feed for FEED_TIME_S.
- *   3. Strafe diagonally to the loading zone (LOAD_X, LOAD_Y).
+ *   3. Back off BACK_FRACTION of the way toward the start pose (halfway by default).
+ *   4. Drive diagonally to the loading zone (LOAD_X, LOAD_Y).
  *
  * All positions are RED, Pedro frame (inches). Blue is the same path turned half a turn about the field
  * center, like FieldConstants: (x, y, h) -> (144 - x, 144 - y, h + 180).
@@ -39,7 +40,11 @@ import java.util.List;
 public class MaverickAuto extends OpMode {
 
     // ===== Path (RED, Pedro frame, inches / degrees) =====
-    public static double SHOOT_X = 41.0;          // strafe to here; y stays at the start y
+    public static double SHOOT_X = 50.0;          // shooting spot
+    public static double SHOOT_Y = 24.0;
+    // After shooting, move this fraction of the way from the shooting spot back toward the start
+    // (0.5 = halfway) before heading to the loading zone. 0 skips this step.
+    public static double BACK_FRACTION = 0.5;
     public static double LOAD_X = 10.0;
     public static double LOAD_Y = 91.0;
     // heading for the whole auto = the start heading from FieldConstants (red 90 deg: facing the far wall)
@@ -47,7 +52,7 @@ public class MaverickAuto extends OpMode {
     // ===== Shooting =====
     public static double SPINUP_TIMEOUT_S = 3.0;  // feed anyway after this long, even if not "ready"
     public static double AIM_TOLERANCE_DEG = 2.0; // turret within this of its aim before feeding
-    public static double FEED_TIME_S = 2.0;       // feed this long, then leave: long enough for the whole preload
+    public static double FEED_TIME_S = 5.5;       // feed this long, then leave: long enough for the whole preload
 
     // ===== Drive controller =====
     public static double KP_POS = 0.06;           // power per inch of distance
@@ -74,7 +79,7 @@ public class MaverickAuto extends OpMode {
     public static double WRONG_WAY_IN = 6.0;
     public static double HEADING_ABORT_DEG = 30.0;
 
-    private enum State { DRIVE_TO_SHOT, SPIN_UP, FEED, DRIVE_TO_LOAD, DONE, ABORTED }
+    private enum State { DRIVE_TO_SHOT, SPIN_UP, FEED, DRIVE_BACK, DRIVE_TO_LOAD, DONE, ABORTED }
 
     private List<LynxModule> hubs;
     private Drive drive;
@@ -130,9 +135,7 @@ public class MaverickAuto extends OpMode {
         intake.start();
         transfer.start();
 
-        // Strafe to SHOOT_X, keeping the start y (red numbers; mirrored for blue)
-        double redStartY = alliance == FieldConstants.Alliance.RED ? startY : 144.0 - startY;
-        setGoal(SHOOT_X, redStartY);
+        setGoal(SHOOT_X, SHOOT_Y);   // red numbers; mirrored for blue
         enter(State.DRIVE_TO_SHOT);
     }
 
@@ -181,6 +184,25 @@ public class MaverickAuto extends OpMode {
                 if (stateTimer.seconds() >= FEED_TIME_S) {
                     ballPathOff();
                     shooter.idleShooter();               // turret parks home, flywheel back to its idle roll
+                    if (BACK_FRACTION > 0) {
+                        // red numbers: SHOOT + fraction of the way to the (red) start
+                        double redStartX = alliance == FieldConstants.Alliance.RED ? startX : 144.0 - startX;
+                        double redStartY = alliance == FieldConstants.Alliance.RED ? startY : 144.0 - startY;
+                        setGoal(SHOOT_X + BACK_FRACTION * (redStartX - SHOOT_X),
+                                SHOOT_Y + BACK_FRACTION * (redStartY - SHOOT_Y));
+                        enter(State.DRIVE_BACK);
+                    } else {
+                        setGoal(LOAD_X, LOAD_Y);
+                        enter(State.DRIVE_TO_LOAD);
+                    }
+                }
+                break;
+
+            case DRIVE_BACK:
+                shooter.idleShooter();
+                ballPathOff();
+                if (driveToGoal()) {
+                    drive.stop();
                     setGoal(LOAD_X, LOAD_Y);
                     enter(State.DRIVE_TO_LOAD);
                 }

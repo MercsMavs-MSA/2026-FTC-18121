@@ -1,7 +1,9 @@
 package org.firstinspires.ftc.Maverick.Subsystems.Shooter;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * Turret aiming only: where the turret must point to hit the target, from the robot pose.
+ * (No flywheel speed: Shooter uses two constant speeds, CLOSE_RPM and FAR_RPM.)
+ */
 public class ShooterCalculator {
     public static final double TURRET_OFFSET_FORWARD_IN = -2.71;
     public static final double TURRET_OFFSET_LEFT_IN = 0.0;
@@ -18,27 +20,22 @@ public class ShooterCalculator {
     public static final double TARGET_HALF_WIDTH_IN = 10.0;
     public static final double BALL_RADIUS_IN = 1.4;
 
-    public double ballRadiusIn = 1.4;
-
-    public static final double[][] SHOT_TABLE = { //placeholder/temporary values, TRUE wheel rpm (old values x 2.25)
-            {  48, 3606 },
-            {  60, 3662 },
-            {  72, 3719 },
-            {  84, 3775 },
-            {  96, 3831 },
-            { 108, 3888 },
-            { 120, 3944 },
-            { 132, 4056 },
-    };
     public ShooterCalculator() {}
 
-    public static ShotSolution solve(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY, double turretAngleNowRad, double aimTrimRad, double rpmTrim) {
-        return compute(robotX, robotY, robotHeadingRad, targetX, targetY, turretAngleNowRad, aimTrimRad, rpmTrim,
+    public static ShotSolution solve(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY,
+                                     double turretAngleNowRad, double aimTrimRad) {
+        return compute(robotX, robotY, robotHeadingRad, targetX, targetY, turretAngleNowRad, aimTrimRad,
                 TURRET_OFFSET_FORWARD_IN, TURRET_OFFSET_LEFT_IN, TURRET_MIN_RAD, TURRET_MAX_RAD,
-                TURRET_ZERO_OFFSET_RAD, TARGET_HALF_WIDTH_IN, BALL_RADIUS_IN, SHOT_TABLE);
+                TURRET_ZERO_OFFSET_RAD, TARGET_HALF_WIDTH_IN, BALL_RADIUS_IN);
     }
 
-    static ShotSolution compute(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY, double turretAngleNowRad, double aimTrimRad, double rpmTrim, double offForwardIn, double offLeftIn, double minRad, double maxRad, double zeroOffsetRad, double halfWidthIn, double ballRadiusIn, double[][] table) {
+    /** Old signature (with an rpm trim), kept so older OpModes such as ShotCalibration still compile. The rpm trim is ignored. */
+    public static ShotSolution solve(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY,
+                                     double turretAngleNowRad, double aimTrimRad, double rpmTrimIgnored) {
+        return solve(robotX, robotY, robotHeadingRad, targetX, targetY, turretAngleNowRad, aimTrimRad);
+    }
+
+    static ShotSolution compute(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY, double turretAngleNowRad, double aimTrimRad, double offForwardIn, double offLeftIn, double minRad, double maxRad, double zeroOffsetRad, double halfWidthIn, double ballRadiusIn) {
         // Turret pivot in the field frame: rotate the robot-frame offset by the heading.
         double cos = Math.cos(robotHeadingRad);
         double sin = Math.sin(robotHeadingRad);
@@ -64,31 +61,10 @@ public class ShooterCalculator {
         if (!reachable) best = desired;
         best = Math.max(minRad, Math.min(maxRad, best));
 
-        // Flywheel speed from the table, plus the driver trim.
-        boolean tableOk = table.length >= 2;
-        boolean inTableRange = tableOk && distance >= table[0][0] && distance <= table[table.length - 1][0];
-        double rpm = tableOk ? Math.max(0.0, rpmAt(table, distance) + rpmTrim) : 0.0;
-
         // How far off the aim can be and still go in: the opening's half width minus the ball radius.
         double tolerance = Math.atan2(Math.max(0.0, halfWidthIn - ballRadiusIn), Math.max(distance, 1.0));
 
-        return new ShotSolution(best, fieldAngle, distance, rpm, tolerance, reachable, inTableRange);
-    }
-
-    /** Shotmap interpolation. */
-    static double rpmAt(double[][] table, double d) {
-        if (table.length == 0) return 0.0;
-        if (d <= table[0][0]) return table[0][1];
-        double[] last = table[table.length - 1];
-        if (d >= last[0]) return last[1];
-        for (int i = 0; i < table.length - 1; i++) {
-            double[] a = table[i];
-            double[] b = table[i + 1];
-            if (d >= a[0] && d <= b[0]) {
-                return a[1] + (d - a[0]) / (b[0] - a[0]) * (b[1] - a[1]);
-            }
-        }
-        return last[1];
+        return new ShotSolution(best, fieldAngle, distance, tolerance, reachable);
     }
 
     static double wrap(double a) {
@@ -103,24 +79,19 @@ public class ShooterCalculator {
         public final double turretAngleRad;
         public final double fieldAngleRad;
         public final double distanceIn;
-        public final double flywheelRpm;
         public final double aimToleranceRad;
         public final boolean reachable;
-        public final boolean inTableRange;
 
-        ShotSolution(double turretAngleRad, double fieldAngleRad, double distanceIn, double flywheelRpm,
-                     double aimToleranceRad, boolean reachable, boolean inTableRange) {
+        ShotSolution(double turretAngleRad, double fieldAngleRad, double distanceIn,
+                     double aimToleranceRad, boolean reachable) {
             this.turretAngleRad = turretAngleRad;
             this.fieldAngleRad = fieldAngleRad;
             this.distanceIn = distanceIn;
-            this.flywheelRpm = flywheelRpm;
             this.aimToleranceRad = aimToleranceRad;
             this.reachable = reachable;
-            this.inTableRange = inTableRange;
         }
         public boolean valid() {
-            return reachable && inTableRange;
+            return reachable;
         }
     }
-
 }
