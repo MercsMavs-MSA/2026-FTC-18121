@@ -25,7 +25,7 @@ public class Shooter {
 
     // CLOSE mode: same idea as FIXED, for a shot from right up against the HIVE. Low flywheel speed,
     // turret straight out the front; the driver pushes up to the HIVE and points the robot at it.
-    public static double CLOSE_RPM = 3000.0;         // placeholder: calibrate at the close-up spot (true wheel rpm)
+    public static double CLOSE_RPM = 3150.0;         // placeholder: calibrate at the close-up spot (true wheel rpm)
     public static double CLOSE_TURRET_DEG = 180.0;   // 180 = shoots out the FRONT
 
     // HOME: when not shooting, the turret parks here so the wiring isn't left stretched out.
@@ -33,7 +33,7 @@ public class Shooter {
     public static double HOME_DELAY_S = 0.5;      // wait this long after shooting ends, so a quick re-press doesn't swing it home and back
 
     // IDLE ROLL: when not shooting, keep the flywheel turning slowly so spin-up starts from here, not 0.
-    public static double IDLE_RPM = 2300.0;      // true wheel rpm (old 500 x 2.25); 0 = coast to a stop when idle
+    public static double IDLE_RPM = 1500.0;      // true wheel rpm (old 500 x 2.25); 0 = coast to a stop when idle
 
     public ShooterState shooterState = ShooterState.STOW;
     public boolean fixedShoot = false;    // right stick press: fallback fixed shot

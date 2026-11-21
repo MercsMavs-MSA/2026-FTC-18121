@@ -12,8 +12,8 @@ public class Flywheel {
 
     // goBILDA 5203 6000 rpm motor (28 encoder ticks per motor turn), belt STEP-UP: wheel turns 1.5x the motor.
     // All rpm values in this file are TRUE WHEEL rpm.
-    public static double MAX_RPM = 9000.0;               // 6000 motor rpm x 1.5 (no load)
-    public static double TICKS_PER_REV = 28.0 / 1.5;     // 18.67 encoder ticks per wheel turn
+    public static double MAX_RPM = 4000.0;               // 6000 motor rpm x 1.5 (no load)
+    public static double TICKS_PER_REV = 28.0 * 1.5;     // 18.67 encoder ticks per wheel turn
 
     /**
      * HUB_PIDF:  the hub's built-in velocity loop with P/I/D/F below.
@@ -26,10 +26,10 @@ public class Flywheel {
     public static Control CONTROL = Control.BANG_BANG;
 
     // ===== BANG_BANG settings (true wheel rpm) =====
-    public static double BANG_BAND_RPM = 200.0;   // sim: 200 held 3 quick balls within 0.5%; 0 (pure bang-bang) overshot ~4%
-    public static double FF_TOP_RPM = 8000.0;   // MEASURE: wheel rpm at full power (FULL_POWER_MODE) on a charged battery
+    public static double BANG_BAND_RPM = 90.0;   // sim: 200 held 3 quick balls within 0.5%; 0 (pure bang-bang) overshot ~4%
+    public static double FF_TOP_RPM = 3600.0;   // MEASURE: wheel rpm at full power (FULL_POWER_MODE) on a charged battery
     public static double FF_VOLTAGE = 12.5;     // battery voltage when FF_TOP_RPM was measured
-    public static double HOLD_KP = 0.0008;      // extra power per rpm below target inside the band
+    public static double HOLD_KP = 0.0018;      // extra power per rpm below target inside the band
 
     // ===== HUB_PIDF settings =====
     public static boolean USE_PIDF = true;
@@ -44,16 +44,16 @@ public class Flywheel {
     // within RPM_THRESHOLD of its recent top speed (so a ball's dip counts as not ready). Set false to go
     // back to closed-loop rpm control from the shot table.
     public static boolean FULL_POWER_MODE = false;
-    public static double FULL_POWER_MIN_RPM = 2250.0;       // never "at speed" below this
-    public static double PEAK_DECAY_RPM_PER_S = 340.0;      // lets the reference follow a sagging battery
+    public static double FULL_POWER_MIN_RPM = 1000.0;       // never "at speed" below this
+    public static double PEAK_DECAY_RPM_PER_S = 150.0;      // lets the reference follow a sagging battery
     public static double SETTLE_WINDOW_MS = 150.0;
 
-    public static double RPM_THRESHOLD = 135.0;   // "at speed" band (same tolerance as the old 60 in the old units)
-    public static double RPM_DEADBAND = 11.0;
+    public static double RPM_THRESHOLD = 60.0;   // "at speed" band (same tolerance as the old 60 in the old units)
+    public static double RPM_DEADBAND = 5.0;
     /** When the TARGET drops by more than this (e.g. back to the idle roll after shooting), coast down
      *  instead of letting the velocity loop brake the wheel with reverse power. Only a target drop starts
      *  a coast-down, so a recovery overshoot in the middle of a burst never cuts power. */
-    public static double COAST_DOWN_RPM = 340.0;
+    public static double COAST_DOWN_RPM = 150.0;
 
     private final DcMotorEx shooterMotor;
     private final ElapsedTime shootTimer = new ElapsedTime();
