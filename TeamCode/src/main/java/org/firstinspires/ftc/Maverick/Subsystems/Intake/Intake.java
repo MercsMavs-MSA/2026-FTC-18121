@@ -14,8 +14,8 @@ public class Intake {
         REVERSING
     }
 
-    public static double INTAKE_MAX_POWER = -1.0;  // same as the old Rooster code
-    public static double REVERSE_POWER = 1.0;      // opposite sign of INTAKE_MAX_POWER
+    public static double INTAKE_MAX_POWER = -1.0;
+    public static double REVERSE_POWER = 1.0;
 
     public static double FLOWER_OPEN_POSITION = 0.8;    // same as the old Rooster code
     public static double FLOWER_CLOSED_POSITION = 0.2;

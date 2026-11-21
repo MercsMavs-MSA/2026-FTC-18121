@@ -19,6 +19,15 @@ public class Flywheel {
     public static double D = 0.0;
     public static double F = 11.7;
 
+    // TEMPORARY: ignore the target rpm and run the wheel at full power. "At speed" then means the wheel
+    // has stopped speeding up (gained less than RPM_THRESHOLD over the last SETTLE_WINDOW_MS) and is
+    // within RPM_THRESHOLD of its recent top speed (so a ball's dip counts as not ready). Set false to go
+    // back to closed-loop rpm control from the shot table.
+    public static boolean FULL_POWER_MODE = false;
+    public static double FULL_POWER_MIN_RPM = 1000.0;       // never "at speed" below this
+    public static double PEAK_DECAY_RPM_PER_S = 150.0;      // lets the reference follow a sagging battery
+    public static double SETTLE_WINDOW_MS = 150.0;
+
     public static double RPM_THRESHOLD = 60.0;
     public static double RPM_DEADBAND = 5.0;
 
@@ -31,6 +40,10 @@ public class Flywheel {
     private boolean velocityMode = false;
     private boolean inRange = false;
     private boolean ready = false;
+    private double peakRpm = 0;
+    private final ElapsedTime peakTimer = new ElapsedTime();
+    private final ElapsedTime clock = new ElapsedTime();
+    private final java.util.ArrayDeque<double[]> history = new java.util.ArrayDeque<>();   // {ms, rpm}
 
     public Flywheel(HardwareMap hardwareMap) {
         shooterMotor = hardwareMap.get(DcMotorEx.class, "flywheelMotor");
@@ -63,6 +76,34 @@ public class Flywheel {
             coast();
             inRange = false;
             ready = false;
+            peakRpm = 0;
+            history.clear();
+            return;
+        }
+
+        if (FULL_POWER_MODE) {
+            if (velocityMode || sentRpm != -1) {
+                shooterMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                shooterMotor.setPower(1.0);
+                velocityMode = false;
+                sentRpm = -1;   // marks "full power is on"
+            }
+            double dt = Math.min(peakTimer.seconds(), 0.1);
+            peakTimer.reset();
+            peakRpm = Math.max(rpm, peakRpm - PEAK_DECAY_RPM_PER_S * dt);
+
+            double now = clock.milliseconds();
+            history.addLast(new double[]{now, rpm});
+            while (history.size() > 1 && now - history.peekFirst()[0] > SETTLE_WINDOW_MS) history.removeFirst();
+            boolean windowFull = now - history.peekFirst()[0] >= SETTLE_WINDOW_MS * 0.8;
+            double gained = rpm - history.peekFirst()[1];
+
+            boolean nowFull = rpm >= FULL_POWER_MIN_RPM
+                    && windowFull && gained < RPM_THRESHOLD          // stopped speeding up
+                    && rpm >= peakRpm - RPM_THRESHOLD;               // not in a ball's dip
+            if (nowFull && !inRange) shootTimer.reset();
+            inRange = nowFull;
+            ready = inRange && shootTimer.milliseconds() >= 100.0;
             return;
         }
 

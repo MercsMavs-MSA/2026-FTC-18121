@@ -15,6 +15,8 @@ public class Shooter {
         SHOOT_FIXED,
     }
 
+    public static double FIXED_RPM = 2400.0;   // constant flywheel speed in fixed mode, placeholder
+
     public ShooterState shooterState = ShooterState.STOW;
     public boolean fixedShoot = false;
 
@@ -22,7 +24,7 @@ public class Shooter {
     public double flywheelBias = 0.0;   // rpm, added to the table rpm
 
     private final Flywheel flywheel;
-    private final TurretRTP turret;
+    private final Turret turret;
     private final Drive drive;
 
     private double targetX = 0.0;
@@ -31,14 +33,21 @@ public class Shooter {
     private ShooterCalculator.ShotSolution calculatedShot;
     private double azimuthAngle = 0.0;
     private double flywheelVel = 0.0;
+    private double heldAngle = 0.0;        // where the turret stays when it is not aiming
+    private boolean heldAngleSet = false;
 
     public Shooter(HardwareMap hardwareMap, Drive drive) {
         flywheel = new Flywheel(hardwareMap);
-        turret = new TurretRTP(hardwareMap);
+        turret = new Turret(hardwareMap);
         this.drive = drive;
     }
 
     public void update() {
+        if (!heldAngleSet) {
+            heldAngle = turret.getAngleRad();   // first loop: hold wherever the turret started
+            heldAngleSet = true;
+        }
+
         calculatedShot = ShooterCalculator.solve(
                 drive.getX(), drive.getY(), drive.getHeadingRad(),
                 targetX, targetY,
@@ -50,11 +59,8 @@ public class Shooter {
                 flywheelVel = 0.0;
                 break;
             case IDLE_FIXED:
-                azimuthAngle = turret.getAngleRad();
-                flywheelVel = 0.0;
-                break;
             case IDLE_HIVE:
-                azimuthAngle = calculatedShot.turretAngleRad;
+                azimuthAngle = heldAngle;           // no live tracking: stay put until the trigger
                 flywheelVel = 0.0;
                 break;
             case SHOOT_HIVE:
@@ -62,14 +68,15 @@ public class Shooter {
                 flywheelVel = calculatedShot.flywheelRpm;
                 break;
             case SHOOT_FIXED:
-                azimuthAngle = turret.getAngleRad();
-                flywheelVel = calculatedShot.flywheelRpm;
+                azimuthAngle = heldAngle;           // locked where it is
+                flywheelVel = FIXED_RPM + flywheelBias;
                 break;
             default:
                 azimuthAngle = 0.0;
                 flywheelVel = 0.0;
                 break;
         }
+        heldAngle = azimuthAngle;
 
         turret.setTargetAngle(azimuthAngle + turretBias);
         flywheel.setTargetRpm(flywheelVel);
@@ -112,20 +119,13 @@ public class Shooter {
         return flywheel.atSpeed();
     }
 
+    /** Driver hint only: the flywheel is spinning for a shot and is at speed. Nothing waits on this. */
     public boolean readyToFire() {
-        switch (shooterState) {
-            case SHOOT_HIVE:
-                return calculatedShot.valid()
-                        && ShooterCalculator.isAimed(calculatedShot, turret.getAngleRad() - turretBias)
-                        && flywheel.atSpeed();
-            case SHOOT_FIXED:
-                return flywheel.atSpeed();
-            default:
-                return false;
-        }
+        boolean shooting = shooterState == ShooterState.SHOOT_HIVE || shooterState == ShooterState.SHOOT_FIXED;
+        return shooting && flywheel.atSpeed();
     }
 
-    public TurretRTP getTurret() { return turret; }
+    public Turret getTurret() { return turret; }
     public Flywheel getFlywheel() { return flywheel; }
     public ShooterCalculator.ShotSolution getShot() { return calculatedShot; }
 
@@ -135,6 +135,6 @@ public class Shooter {
         telemetry.addData("Turret", "%.1f / %.1f deg",
                 Math.toDegrees(turret.getAngleRad()), Math.toDegrees(azimuthAngle + turretBias));
         telemetry.addData("Flywheel", "%.0f / %.0f rpm", flywheel.getRpm(), flywheel.getTargetRpm());
-        telemetry.addData("Shot valid / ready", "%b / %b", calculatedShot.valid(), readyToFire());
+        telemetry.addData("In table range / at speed", "%b / %b", calculatedShot.valid(), readyToFire());
     }
 }

@@ -12,21 +12,20 @@ public class Transfer {
     public enum State {
         OFF,
         INTAKING,
-        FEEDING,
+        FEEDING,     // gate open, transfer pushing balls into the flywheel
         REVERSING
     }
 
-    public static double TRANSFER_MAX_POWER = -1.0;
-    public static double TRANSFER_REVERSE_POWER = 1.0;
+    public static double TRANSFER_MAX_POWER = 1.0;
+    public static double TRANSFER_REVERSE_POWER = -1.0;
 
-    public static double GATE_CLOSED_POSITION = 0.6;
-    public static double GATE_OPEN_POSITION = 0.4;
+    public static double GATE_CLOSED_POSITION = 0.185;
+    public static double GATE_OPEN_POSITION = 0.26;
 
     private final DcMotorEx transfer;
     private final Servo gateServo;
 
     private State state = State.OFF;
-    private boolean fireAllowed = false;
     private boolean manualGateOpen = false;
     private boolean gateEnabled = false;   // false until start(): nothing moves in INIT
 
@@ -56,10 +55,6 @@ public class Transfer {
         return state;
     }
 
-    public void setFireAllowed(boolean allowed) {
-        fireAllowed = allowed;
-    }
-
     public void toggleGate() {
         manualGateOpen = !manualGateOpen;
     }
@@ -78,7 +73,7 @@ public class Transfer {
                 break;
             case FEEDING:
                 power = TRANSFER_MAX_POWER;
-                open = fireAllowed;
+                open = true;
                 break;
             case REVERSING:
                 power = TRANSFER_REVERSE_POWER;

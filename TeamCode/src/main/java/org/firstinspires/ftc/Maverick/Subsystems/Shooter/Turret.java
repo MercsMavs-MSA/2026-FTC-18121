@@ -16,7 +16,7 @@ public class Turret {
     public static double kD = 0.05;  // power per rad/s of turret speed, placeholder
     public static double kS = 0.04;  // minimum power to overcome friction, placeholder
     public static double MAX_POWER = 0.8;
-    public static double DEADBAND_DEG = 0.5;
+    public static double DEADBAND_DEG = 2;
     public static double POWER_DEADBAND = 0.01;
 
     public static double handoffAngleRad = 0.0; // turret angle saved at the end of auto, read by teleop
@@ -33,7 +33,7 @@ public class Turret {
 
     public Turret(HardwareMap hardwareMap) {
         turretMotor = hardwareMap.get(DcMotorEx.class, "turretMotor");
-        turretMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+        turretMotor.setDirection(DcMotorSimple.Direction.FORWARD); //turretMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         turretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turretMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);

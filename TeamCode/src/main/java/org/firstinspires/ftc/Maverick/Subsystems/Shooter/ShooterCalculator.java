@@ -2,17 +2,18 @@ package org.firstinspires.ftc.Maverick.Subsystems.Shooter;
 
 import java.util.ArrayList;
 import java.util.List;
-public class ShooterCalculator { //TODO: after drivebase code is created, wrte an opmode to gather successful shotmap values from different areas on the field.
-    public static final double TURRET_OFFSET_FORWARD_IN = 0.0;
+public class ShooterCalculator {
+    public static final double TURRET_OFFSET_FORWARD_IN = -2.71;
     public static final double TURRET_OFFSET_LEFT_IN = 0.0;
 
-    public static final double TURRET_MIN_DEG = -180.0;
-    public static final double TURRET_MAX_DEG = 180.0;
-    public static final double TURRET_ZERO_OFFSET_DEG = 0.0;
+    public static final double TURRET_MIN_DEG = 0.0;
+    public static final double TURRET_MAX_DEG = 360.0;
+    public static final double TURRET_ZERO_OFFSET_DEG = 180.0;
 
     public static final double TURRET_MIN_RAD = Math.toRadians(TURRET_MIN_DEG);
     public static final double TURRET_MAX_RAD = Math.toRadians(TURRET_MAX_DEG);
     public static final double TURRET_ZERO_OFFSET_RAD = Math.toRadians(TURRET_ZERO_OFFSET_DEG);
+    public static final double LIMIT_TOLERANCE_RAD = Math.toRadians(2.0);
 
     public static final double TARGET_HALF_WIDTH_IN = 10.0;
     public static final double BALL_RADIUS_IN = 1.4;
@@ -59,10 +60,16 @@ public class ShooterCalculator { //TODO: after drivebase code is created, wrte a
         // Where the turret should point, relative to the robot, within one turn.
         double desired = wrap(fieldAngle - robotHeadingRad - zeroOffsetRad + aimTrimRad);
 
-        if (turretAngleNowRad > 0 && desired + 2.0 * Math.PI <= maxRad) desired += 2.0 * Math.PI;
-        if (turretAngleNowRad < 0 && desired - 2.0 * Math.PI >= minRad) desired -= 2.0 * Math.PI;
-        boolean reachable = desired >= minRad && desired <= maxRad;
-        double best = Math.max(minRad, Math.min(maxRad, desired));
+        double best = Double.NaN;
+        for (int k = -1; k <= 2; k++) {
+            double c = desired + k * 2.0 * Math.PI;
+            if (c >= minRad - LIMIT_TOLERANCE_RAD && c <= maxRad + LIMIT_TOLERANCE_RAD && (Double.isNaN(best) || Math.abs(c - turretAngleNowRad) < Math.abs(best - turretAngleNowRad))) {
+                best = c;
+            }
+        }
+        boolean reachable = !Double.isNaN(best);
+        if (!reachable) best = desired;
+        best = Math.max(minRad, Math.min(maxRad, best));
 
         // Flywheel speed from the table, plus the driver trim.
         boolean tableOk = table.length >= 2;

@@ -11,13 +11,14 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 public class Drive {
 
-    public static double MAX_DRIVE_POWER = 0.6;
+    public static double MAX_DRIVE_POWER = 0.4;
     public static double SLOW_DRIVE_POWER = 0.3;
     public static double TURN_SCALE = 0.6;
-    public static double STICK_EXPONENT = 2.0;    // 1 = linear, 2 = squared, 3 = cubic
+    public static double STICK_EXPONENT = 1;    // 1 = linear, 2 = squared, 3 = cubic
 
     // Pose saved at the end of auto, used to start teleop where auto left off
     public static Pose2D handoffPose = new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0);
+    public static boolean handoffValid = false;   // true once an auto saved a pose; TeleOp uses it once
 
     private final DcMotor frontLeftDrive;
     private final DcMotor frontRightDrive;
@@ -27,14 +28,17 @@ public class Drive {
 
     private Pose2D pose = new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0);
 
+    // Field heading pointing straight away from the drivers (Pedro frame: red 0, blue 180 deg)
+    private double driverForwardRad = 0.0;
+
     public Drive(HardwareMap hardwareMap) {
         frontLeftDrive = hardwareMap.get(DcMotor.class, "frontLeftDrive");
         frontRightDrive = hardwareMap.get(DcMotor.class, "frontRightDrive");
         backLeftDrive = hardwareMap.get(DcMotor.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive");
 
-        backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -61,12 +65,18 @@ public class Drive {
         pose = newPose;
     }
 
+    public void setDriverForward(double rad) {
+        driverForwardRad = rad;
+    }
+
+    /** Press with the robot facing straight away from the drivers. */
     public void resetHeading() {
-        pinpoint.setHeading(0, AngleUnit.RADIANS);
+        pinpoint.setHeading(driverForwardRad, AngleUnit.RADIANS);
     }
 
     public void saveForTeleop() {
         handoffPose = pose;
+        handoffValid = true;
     }
 
     public Pose2D getPose() { return pose; }
@@ -76,8 +86,8 @@ public class Drive {
 
     public void teleopDrive(double leftStickY, double leftStickX, double rightStickX,
                             boolean robotRelative, boolean slowMode) {
-        double forward = shape(leftStickY);
-        double right = shape(-leftStickX);
+        double forward = leftStickY; //shape(leftStickY);
+        double right = -leftStickX; //shape(-leftStickX);
         double rotate = shape(-rightStickX) * TURN_SCALE;
         double cap = slowMode ? SLOW_DRIVE_POWER : MAX_DRIVE_POWER;
 
@@ -98,7 +108,7 @@ public class Drive {
         double r = Math.hypot(right, forward);
 
         // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta + getHeadingRad());
+        theta = AngleUnit.normalizeRadians(theta + getHeadingRad() - driverForwardRad);
 
         // Third, convert back to Cartesian (cos for forward, sin for right)
         double newForward = r * Math.cos(theta);
@@ -141,7 +151,7 @@ public class Drive {
 
     private void configurePinpoint() {
         // Pod offsets (inches): X pod sideways from center (left +), Y pod forward of center (forward +)
-        pinpoint.setOffsets(-7.26, 0, DistanceUnit.INCH); //these are tuned for 3110-0002-0001 Product Insight #1
+        pinpoint.setOffsets(91.55102, -86.33307, DistanceUnit.MM); //these are tuned for 3110-0002-0001 Product Insight #1
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
                 GoBildaPinpointDriver.EncoderDirection.REVERSED);
