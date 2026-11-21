@@ -25,7 +25,7 @@ public class Shooter {
 
     // CLOSE mode: same idea as FIXED, for a shot from right up against the HIVE. Low flywheel speed,
     // turret straight out the front; the driver pushes up to the HIVE and points the robot at it.
-    public static double CLOSE_RPM = 3150.0;         // placeholder: calibrate at the close-up spot (true wheel rpm)
+    public static double CLOSE_RPM = 3200.0;         // placeholder: calibrate at the close-up spot (true wheel rpm)
     public static double CLOSE_TURRET_DEG = 180.0;   // 180 = shoots out the FRONT
 
     // HOME: when not shooting, the turret parks here so the wiring isn't left stretched out.

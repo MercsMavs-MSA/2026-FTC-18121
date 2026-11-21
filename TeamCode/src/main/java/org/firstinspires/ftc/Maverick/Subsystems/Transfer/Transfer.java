@@ -82,7 +82,7 @@ public class Transfer {
                 open = false;
                 break;
             case FEEDING:
-                power = TRANSFER_MAX_POWER*0.67;
+                power = TRANSFER_MAX_POWER*0.55;
                 open = true;
                 break;
             case REVERSING:
