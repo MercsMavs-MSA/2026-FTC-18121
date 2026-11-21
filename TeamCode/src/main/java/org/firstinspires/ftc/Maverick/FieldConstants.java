@@ -46,7 +46,9 @@ public final class FieldConstants {
     public static final double BLUE_DRIVER_FORWARD_DEG = 180.0;
 
     // ---------------- TeleOp start pose when no auto ran (testing) ----------------
-    public static final double RED_TEST_START_X = 55.3, RED_TEST_START_Y =8.0, RED_TEST_START_DEG = 90.0;
+//    public static final double RED_TEST_START_X = 55.3, RED_TEST_START_Y =8.0, RED_TEST_START_DEG = 90.0;
+    public static final double RED_TEST_START_X = 8.3, RED_TEST_START_Y =31.1, RED_TEST_START_DEG = 90.0;
+
 
     // ---------------- Helpers ----------------
     public static double aimX(Alliance a, HiveState s) {

@@ -11,9 +11,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 public class Drive {
 
-    public static double MAX_DRIVE_POWER = 0.4;
+    public static double MAX_DRIVE_POWER = 0.8;
     public static double SLOW_DRIVE_POWER = 0.3;
-    public static double TURN_SCALE = 0.6;
+    public static double TURN_SCALE = 0.9;
     public static double STICK_EXPONENT = 1;    // 1 = linear, 2 = squared, 3 = cubic
 
     // Pose saved at the end of auto, used to start teleop where auto left off
@@ -40,10 +40,13 @@ public class Drive {
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
-        frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Direct power, not the hub's velocity loop: the velocity loop's soft default tuning ramps the
+        // wheels toward the target speed, which makes starting and stopping feel slow and slippery.
+        // With BRAKE below, letting go of the stick now stops the robot hard.
+        frontLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

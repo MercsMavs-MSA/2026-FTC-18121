@@ -20,22 +20,15 @@ public class ShooterCalculator {
 
     public double ballRadiusIn = 1.4;
 
-    public static final double[][] SHOT_TABLE = { //placeholder/temporary values
-            {  48, 2025 },
-            {  54, 2075 },
-            {  60, 2125 },
-            {  66, 2175 },
-            {  72, 2225 },
-            {  78, 2275 },
-            {  84, 2325 },
-            {  90, 2400 },
-            {  96, 2450 },
-            { 102, 2500 },
-            { 108, 2550 },
-            { 114, 2625 },
-            { 120, 2675 },
-            { 126, 2725 },
-            { 132, 2775 },
+    public static final double[][] SHOT_TABLE = { //placeholder/temporary values, TRUE wheel rpm (old values x 2.25)
+            {  48, 3606 },
+            {  60, 3662 },
+            {  72, 3719 },
+            {  84, 3775 },
+            {  96, 3831 },
+            { 108, 3888 },
+            { 120, 3944 },
+            { 132, 4056 },
     };
     public ShooterCalculator() {}
 

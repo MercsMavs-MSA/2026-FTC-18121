@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Maverick Live Sim</title>
+<style>
+  :root {
+    --bg: #14171c; --panel: #1d2128; --line: #2c323c; --text: #e6e8eb; --muted: #8b93a0;
+    --ok: #3fb97a; --warn: #e3b341; --bad: #e5534b; --accent: #4c9be8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; }
+  button { background: #2a303a; color: var(--text); border: 1px solid #3a414d; border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button:hover { background: #343b47; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: default; }
+  .pill { padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+  .pill.INIT { background: #3a3320; color: var(--warn); }
+  .pill.RUNNING { background: #1f3a2c; color: var(--ok); }
+  .pill.STOPPED { background: #3a2222; color: var(--bad); }
+  .pill.OFFLINE { background: #3a2222; color: var(--bad); }
+  .muted { color: var(--muted); }
+  main { display: grid; grid-template-columns: minmax(420px, 640px) minmax(340px, 1fr); gap: 16px; padding: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  canvas { width: 100%; height: auto; display: block; border-radius: 6px; background: #0f1216; cursor: crosshair; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .stat { min-width: 120px; }
+  .stat .label { color: var(--muted); font-size: 11px; }
+  .stat .value { font-size: 18px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar { height: 10px; background: #0f1216; border-radius: 5px; position: relative; overflow: hidden; margin-top: 4px; }
+  .bar .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); }
+  .bar .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); }
+  .tele { font-family: ui-monospace, Consolas, monospace; font-size: 12px; white-space: pre-wrap; max-height: 260px; overflow: auto; }
+  .tele .k { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td, th { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  th { color: var(--muted); font-weight: 500; }
+  .good { color: var(--ok); } .badc { color: var(--bad); } .warnc { color: var(--warn); }
+  .pad { display: grid; grid-template-columns: repeat(8, auto); gap: 4px; }
+  .btn { padding: 2px 6px; border-radius: 4px; background: #0f1216; color: var(--muted); font-size: 11px; text-align: center; }
+  .btn.on { background: var(--accent); color: #fff; }
+  .error { background: #3a2222; color: #ffb4ae; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; display: none; }
+  input[type=number] { width: 64px; background: #0f1216; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; }
+  label { color: var(--muted); }
+  .keys { font-size: 12px; color: var(--muted); }
+  .keys b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maverick Live Sim</h1>
+  <span id="phase" class="pill OFFLINE">OFFLINE</span>
+  <button id="bInit">Init</button>
+  <button id="bStart" class="primary">Start</button>
+  <button id="bStop">Stop</button>
+  <span class="muted" id="clock">t = 0.00 s</span>
+  <span style="flex:1"></span>
+  <span id="pad" class="muted">No controller: press a button on it, or use the keyboard</span>
+</header>
+
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>Field (click to move the target, shift-click to place the robot)</h2>
+      <canvas id="field" width="640" height="640"></canvas>
+      <div class="row" style="margin-top:10px; align-items:center;">
+        <label>Robot start x <input type="number" id="sx" value="-30"></label>
+        <label>y <input type="number" id="sy" value="0"></label>
+        <label>heading <input type="number" id="sh" value="0"></label>
+        <button id="bPlace">Place + Init</button>
+        <label>Target x <input type="number" id="tx" value="66"></label>
+        <label>y <input type="number" id="ty" value="0"></label>
+        <button id="bTarget">Set target</button>
+      </div>
+      <div class="row" style="margin-top:8px; align-items:center;">
+        <button id="bBall">Add ball</button>
+        <label><input type="checkbox" id="cField"> Intake can pick up balls from the field</label>
+        <span class="muted">Field shown as &plusmn;72 in around (0,0); use the same frame as your Pinpoint pose.</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Controller (gamepad1)</h2>
+      <div class="pad" id="btns"></div>
+      <div class="keys" style="margin-top:8px">
+        Keyboard if no controller: <b>WASD</b> left stick, <b>J/L</b> turn, <b>Space</b> RT shoot, <b>Shift</b> LT intake,
+        <b>R</b> LB outtake, <b>1</b> dpad down flower, <b>2</b> dpad up gate, <b>F</b> right stick press (fixed), <b>Z</b> A (reset heading)
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <div class="error" id="err"></div>
+      <h2>Shooter</h2>
+      <div class="row">
+        <div class="stat"><div class="label">Flywheel rpm / target</div><div class="value" id="rpm">0 / 0</div>
+          <div class="bar"><div class="fill" id="rpmFill"></div><div class="mark" id="rpmMark"></div></div></div>
+        <div class="stat"><div class="label">Turret deg / target</div><div class="value" id="tur">0 / 0</div></div>
+        <div class="stat"><div class="label">Shot</div><div class="value" id="shot">-</div></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="stat"><div class="label">Gate</div><div class="value" id="gate">closed</div></div>
+        <div class="stat"><div class="label">Balls in robot</div><div class="value" id="balls">0</div></div>
+        <div class="stat"><div class="label">Intake / transfer power</div><div class="value" id="pw">0 / 0</div></div>
+        <div class="stat"><div class="label">Flower</div><div class="value" id="flower">-</div></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="stat"><div class="label">Pose (Pinpoint) x, y, h</div><div class="value" id="pose">0, 0, 0</div></div>
+        <div class="stat"><div class="label">Warnings</div><div class="value" id="warn" style="font-size:13px">none</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Shots (last 8)</h2>
+      <table><thead><tr><th>#</th><th>t</th><th>rpm / target</th><th>rpm err</th><th>aim err (tol)</th><th>dist</th><th></th></tr></thead>
+        <tbody id="shots"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Driver Station telemetry</h2>
+      <div class="tele" id="tele"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const canvas = $('field'), ctx = canvas.getContext('2d');
+  const FIELD = 144, HALF = 72;
+  let state = null, pending = [], online = false;
+
+  // ---------------- input ----------------
+  const BTN_NAMES = ['A','B','X','Y','LB','RB','LT','RT','Back','Start','LS','RS','Up','Down','Left','Right'];
+  $('btns').innerHTML = BTN_NAMES.map((n, i) => `<div class="btn" id="b${i}">${n}</div>`).join('');
+  const keys = new Set();
+  window.addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT') { keys.add(e.code); if (e.code === 'Space') e.preventDefault(); } });
+  window.addEventListener('keyup', e => keys.delete(e.code));
+  window.addEventListener('blur', () => keys.clear());
+
+  const dz = v => Math.abs(v) < 0.06 ? 0 : v;
+
+  function readInput() {
+    let ax = [0, 0, 0, 0, 0, 0], bits = 0, src = 'keyboard';
+    const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(p => p && p.connected) : [];
+    const gp = pads[0];
+    if (gp) {
+      src = gp.id;
+      ax = [dz(gp.axes[0] || 0), dz(gp.axes[1] || 0), dz(gp.axes[2] || 0), dz(gp.axes[3] || 0),
+            gp.buttons[6] ? gp.buttons[6].value : 0, gp.buttons[7] ? gp.buttons[7].value : 0];
+      gp.buttons.forEach((b, i) => { if (i < 16 && i !== 6 && i !== 7 && b.pressed) bits |= (1 << i); });
+    }
+    // keyboard adds on top (works with or without a controller)
+    const k = c => keys.has(c);
+    if (k('KeyW')) ax[1] = -1; if (k('KeyS')) ax[1] = 1;
+    if (k('KeyA')) ax[0] = -1; if (k('KeyD')) ax[0] = 1;
+    if (k('KeyJ')) ax[2] = -1; if (k('KeyL')) ax[2] = 1;
+    if (k('ShiftLeft') || k('ShiftRight')) ax[4] = 1;
+    if (k('Space')) ax[5] = 1;
+    if (k('KeyR')) bits |= 1 << 4;
+    if (k('Digit1')) bits |= 1 << 13;
+    if (k('Digit2')) bits |= 1 << 12;
+    if (k('KeyF')) bits |= 1 << 11;
+    if (k('KeyZ')) bits |= 1 << 0;
+    for (let i = 0; i < 16; i++) {
+      const on = i === 6 ? ax[4] > 0.5 : i === 7 ? ax[5] > 0.5 : (bits & (1 << i)) !== 0;
+      $('b' + i).classList.toggle('on', on);
+    }
+    $('pad').textContent = gp ? 'Controller: ' + src : 'No controller: press a button on it, or use the keyboard';
+    return ax.map(v => v.toFixed(3)).join(',') + ',' + bits;
+  }
+
+  // ---------------- io ----------------
+  async function io() {
+    const body = [readInput(), ...pending.map(c => 'cmd:' + c)].join('\n');
+    pending = [];
+    try {
+      const r = await fetch('/io', { method: 'POST', body });
+      state = await r.json();
+      online = true;
+    } catch (e) {
+      online = false;
+    }
+    render();
+    setTimeout(io, 25);
+  }
+  const cmd = c => pending.push(c);
+
+  $('bInit').onclick = () => cmd('init');
+  $('bStart').onclick = () => cmd('start');
+  $('bStop').onclick = () => cmd('stop');
+  $('bBall').onclick = () => cmd('addball');
+  $('cField').onchange = e => cmd('fieldballs ' + (e.target.checked ? 1 : 0));
+  $('bPlace').onclick = () => cmd(`place ${+$('sx').value} ${+$('sy').value} ${+$('sh').value}`);
+  $('bTarget').onclick = () => cmd(`target ${+$('tx').value} ${+$('ty').value}`);
+
+  // field <-> canvas: +x to the right, +y up
+  const S = () => canvas.width / FIELD;
+  const toPx = (x, y) => [(x + HALF) * S(), (HALF - y) * S()];
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect();
+    const px = (e.clientX - r.left) * canvas.width / r.width, py = (e.clientY - r.top) * canvas.height / r.height;
+    const x = Math.round(px / S() - HALF), y = Math.round(HALF - py / S());
+    if (e.shiftKey) {
+      $('sx').value = x; $('sy').value = y;
+      cmd(`place ${x} ${y} ${+$('sh').value}`);
+    } else {
+      $('tx').value = x; $('ty').value = y;
+      cmd(`target ${x} ${y}`);
+    }
+  });
+
+  // ---------------- render ----------------
+  const fmt = (v, d = 0) => v == null ? '-' : Number(v).toFixed(d);
+
+  function drawField(s) {
+    const W = canvas.width;
+    ctx.clearRect(0, 0, W, W);
+    ctx.fillStyle = '#0f1216'; ctx.fillRect(0, 0, W, W);
+    ctx.strokeStyle = '#1f252d'; ctx.lineWidth = 1;
+    for (let i = -72; i <= 72; i += 24) {
+      let [a, b] = toPx(i, -72), [c, d] = toPx(i, 72);
+      ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke();
+      [a, b] = toPx(-72, i); [c, d] = toPx(72, i);
+      ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke();
+    }
+    ctx.strokeStyle = '#2c3440'; ctx.beginPath();
+    let [ox, oy] = toPx(0, 0); ctx.moveTo(ox - 6, oy); ctx.lineTo(ox + 6, oy); ctx.moveTo(ox, oy - 6); ctx.lineTo(ox, oy + 6); ctx.stroke();
+    ctx.fillStyle = '#4a525e'; ctx.font = '11px system-ui';
+    ctx.fillText('+x', W - 22, oy - 6); ctx.fillText('+y', ox + 6, 14);
+    if (!s) return;
+
+    // target + aim tolerance cone from the turret
+    const [tpx, tpy] = toPx(s.tx, s.ty);
+    const h = s.h * Math.PI / 180;
+    const pivX = s.x + s.turretOffF * Math.cos(h) - s.turretOffL * Math.sin(h);
+    const pivY = s.y + s.turretOffF * Math.sin(h) + s.turretOffL * Math.cos(h);
+    const [ppx, ppy] = toPx(pivX, pivY);
+
+    ctx.strokeStyle = '#e3b34155'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(ppx, ppy); ctx.lineTo(tpx, tpy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#e3b341'; ctx.beginPath(); ctx.arc(tpx, tpy, 7, 0, 2 * Math.PI); ctx.fill();
+    ctx.strokeStyle = '#e3b341'; ctx.beginPath(); ctx.arc(tpx, tpy, 12, 0, 2 * Math.PI); ctx.stroke();
+
+    // robot
+    const [rx, ry] = toPx(s.x, s.y);
+    ctx.save(); ctx.translate(rx, ry); ctx.rotate(-h);
+    const half = 9 * S();
+    ctx.fillStyle = '#2b3a52'; ctx.strokeStyle = '#4c9be8'; ctx.lineWidth = 2;
+    ctx.fillRect(-half, -half, 2 * half, 2 * half); ctx.strokeRect(-half, -half, 2 * half, 2 * half);
+    ctx.fillStyle = '#4c9be8'; ctx.beginPath(); ctx.moveTo(half, 0); ctx.lineTo(half - 8, -6); ctx.lineTo(half - 8, 6); ctx.fill();
+    ctx.restore();
+
+    // turret aim line
+    const ta = h + s.turret * Math.PI / 180;
+    const len = Math.max(30, Math.hypot(s.tx - pivX, s.ty - pivY));
+    const [ex, ey] = toPx(pivX + len * Math.cos(ta), pivY + len * Math.sin(ta));
+    ctx.strokeStyle = s.ready ? '#3fb97a' : s.valid ? '#4c9be8' : '#e5534b';
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ppx, ppy); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.fillStyle = '#e6e8eb'; ctx.beginPath(); ctx.arc(ppx, ppy, 4, 0, 2 * Math.PI); ctx.fill();
+
+    // pose estimate ghost if it differs from the truth (e.g. after a heading reset)
+    if (Math.hypot(s.ex - s.x, s.ey - s.y) > 1 || Math.abs(((s.eh - s.h + 540) % 360) - 180) > 2) {
+      const [gx, gy] = toPx(s.ex, s.ey);
+      ctx.save(); ctx.translate(gx, gy); ctx.rotate(-s.eh * Math.PI / 180);
+      ctx.strokeStyle = '#8b93a0'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.strokeRect(-half, -half, 2 * half, 2 * half);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(half, 0); ctx.stroke();
+      ctx.restore(); ctx.setLineDash([]);
+      ctx.fillStyle = '#8b93a0'; ctx.fillText('Pinpoint estimate', gx + half + 4, gy);
+    }
+  }
+
+  function render() {
+    const s = state;
+    const ph = online ? (s ? s.phase : 'OFFLINE') : 'OFFLINE';
+    $('phase').className = 'pill ' + ph; $('phase').textContent = online ? ph : 'OFFLINE (is run_sim live running?)';
+    $('bStart').disabled = !(online && s && s.phase === 'INIT');
+    $('bStop').disabled = !(online && s && s.phase === 'RUNNING');
+    drawField(online ? s : null);
+    if (!online || !s) return;
+
+    $('clock').textContent = 't = ' + fmt(s.t, 2) + ' s';
+    $('err').style.display = s.error ? 'block' : 'none'; $('err').textContent = s.error;
+    $('rpm').textContent = fmt(s.rpm) + ' / ' + fmt(s.rpmTarget);
+    const maxR = 4000;
+    $('rpmFill').style.width = Math.max(0, Math.min(100, s.rpm / maxR * 100)) + '%';
+    $('rpmMark').style.left = Math.max(0, Math.min(100, s.rpmTarget / maxR * 100)) + '%';
+    $('rpmMark').style.display = s.rpmTarget > 0 ? 'block' : 'none';
+    $('tur').textContent = fmt(s.turret, 1) + ' / ' + fmt(s.turretTarget, 1);
+    $('shot').innerHTML = s.ready ? '<span class="good">READY</span>' : s.valid ? '<span class="warnc">valid, not ready</span>' : '<span class="badc">not valid</span>';
+    $('gate').innerHTML = s.gateOpen ? '<span class="good">open</span>' : (s.gateCmd ? '<span class="warnc">opening</span>' : 'closed');
+    $('balls').textContent = s.balls;
+    $('pw').textContent = fmt(s.intake, 1) + ' / ' + fmt(s.transfer, 1);
+    $('flower').textContent = s.flower < 0 ? '-' : fmt(s.flower, 2);
+    $('pose').textContent = `${fmt(s.ex, 1)}, ${fmt(s.ey, 1)}, ${fmt(s.eh, 0)}°`;
+    const w = [];
+    if (s.hardStop) w.push('turret hit hard stop');
+    if (s.braked) w.push('flywheel was braked');
+    $('warn').innerHTML = w.length ? '<span class="badc">' + w.join(', ') + '</span>' : '<span class="muted">none</span>';
+
+    $('shots').innerHTML = s.shots.slice().reverse().map(x =>
+      `<tr><td>${x.n}</td><td>${fmt(x.t, 1)}</td><td>${fmt(x.rpm)} / ${fmt(x.target)}</td>
+       <td class="${x.rpmOk ? 'good' : 'badc'}">${x.rpmErr > 0 ? '+' : ''}${fmt(x.rpmErr, 1)}%</td>
+       <td class="${x.aimOk ? 'good' : 'badc'}">${fmt(x.aimErr, 1)}° (${fmt(x.tol, 1)})</td><td>${fmt(x.dist)} in</td>
+       <td class="${x.rpmOk && x.aimOk ? 'good' : 'badc'}">${x.rpmOk && x.aimOk ? 'GOOD' : (!x.rpmOk ? 'RPM OFF' : 'AIM OFF')}</td></tr>`).join('')
+      || '<tr><td colspan="7" class="muted">no shots yet</td></tr>';
+
+    $('tele').innerHTML = s.telemetry.length
+      ? s.telemetry.map(([k, v]) => k ? `<span class="k">${esc(k)}:</span> ${esc(v)}` : esc(v)).join('\n')
+      : '<span class="muted">(telemetry appears once the OpMode is running)</span>';
+  }
+  const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  window.addEventListener('gamepadconnected', () => render());
+  io();
+})();
+</script>
+</body>
+</html>

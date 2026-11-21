@@ -68,11 +68,11 @@ public class Transfer {
         boolean open;
         switch (state) {
             case INTAKING:
-                power = TRANSFER_MAX_POWER;
+                power = TRANSFER_MAX_POWER*0.75;
                 open = false;
                 break;
             case FEEDING:
-                power = TRANSFER_MAX_POWER;
+                power = TRANSFER_MAX_POWER*0.8;
                 open = true;
                 break;
             case REVERSING:

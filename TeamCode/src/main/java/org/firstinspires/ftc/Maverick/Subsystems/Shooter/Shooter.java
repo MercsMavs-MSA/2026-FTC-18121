@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.Maverick.Subsystems.Shooter;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.Maverick.Subsystems.Drive.Drive;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -15,13 +16,24 @@ public class Shooter {
         SHOOT_FIXED,
     }
 
-    public static double FIXED_RPM = 2400.0;   // constant flywheel speed in fixed mode, placeholder
+    // FALLBACK ("fixed") mode: no odometry, no shot table. The turret drives to one set angle and the
+    // flywheel spins to one set speed; the driver aims by pointing the robot, from a known spot.
+    public static double FIXED_RPM = 3825.0;      // flywheel speed for the fallback spot (true wheel rpm, old 1700 x 2.25), placeholder: calibrate
+    public static double FIXED_TURRET_DEG = 180.0;   // turret angle: 0 = zero stop (shoots out the BACK), 180 = shoots out the FRONT
+
+    // HOME: when not shooting, the turret parks here so the wiring isn't left stretched out.
+    public static double HOME_DEG = 0.0;          // 0 = the zero position it starts in
+    public static double HOME_DELAY_S = 0.5;      // wait this long after shooting ends, so a quick re-press doesn't swing it home and back
+
+    // IDLE ROLL: when not shooting, keep the flywheel turning slowly so spin-up starts from here, not 0.
+    public static double IDLE_RPM = 1125.0;      // true wheel rpm (old 500 x 2.25); 0 = coast to a stop when idle
 
     public ShooterState shooterState = ShooterState.STOW;
     public boolean fixedShoot = false;
 
     public double turretBias = 0.0;     // radians, added to the turret setpoint
     public double flywheelBias = 0.0;   // rpm, added to the table rpm
+    private double aimCorrectionRad = 0.0;   // from Vision; only used when aiming at the HIVE
 
     private final Flywheel flywheel;
     private final Turret turret;
@@ -33,8 +45,7 @@ public class Shooter {
     private ShooterCalculator.ShotSolution calculatedShot;
     private double azimuthAngle = 0.0;
     private double flywheelVel = 0.0;
-    private double heldAngle = 0.0;        // where the turret stays when it is not aiming
-    private boolean heldAngleSet = false;
+    private final ElapsedTime sinceShooting = new ElapsedTime();   // time since the shooter last aimed for a shot
 
     public Shooter(HardwareMap hardwareMap, Drive drive) {
         flywheel = new Flywheel(hardwareMap);
@@ -43,32 +54,33 @@ public class Shooter {
     }
 
     public void update() {
-        if (!heldAngleSet) {
-            heldAngle = turret.getAngleRad();   // first loop: hold wherever the turret started
-            heldAngleSet = true;
-        }
+        boolean shooting = shooterState == ShooterState.SHOOT_HIVE || shooterState == ShooterState.SHOOT_FIXED;
+        if (shooting) sinceShooting.reset();
+        boolean goHome = sinceShooting.seconds() >= HOME_DELAY_S;
 
         calculatedShot = ShooterCalculator.solve(
                 drive.getX(), drive.getY(), drive.getHeadingRad(),
                 targetX, targetY,
-                turret.getAngleRad(), 0.0, flywheelBias);
+                turret.getAngleRad(), aimCorrectionRad, flywheelBias);
 
         switch (shooterState) {
             case STOW:
                 azimuthAngle = 0.0;
                 flywheelVel = 0.0;
                 break;
-            case IDLE_FIXED:
             case IDLE_HIVE:
-                azimuthAngle = heldAngle;           // no live tracking: stay put until the trigger
-                flywheelVel = 0.0;
+            case IDLE_FIXED:
+                // not shooting: hold where it is for HOME_DELAY_S, then park at home (no live tracking)
+                if (goHome) azimuthAngle = Math.toRadians(HOME_DEG);
+                // slow roll; off in full-power test mode, where any target would mean full power
+                flywheelVel = Flywheel.FULL_POWER_MODE ? 0.0 : IDLE_RPM;
                 break;
             case SHOOT_HIVE:
                 azimuthAngle = calculatedShot.turretAngleRad;
                 flywheelVel = calculatedShot.flywheelRpm;
                 break;
             case SHOOT_FIXED:
-                azimuthAngle = heldAngle;           // locked where it is
+                azimuthAngle = Math.toRadians(FIXED_TURRET_DEG);
                 flywheelVel = FIXED_RPM + flywheelBias;
                 break;
             default:
@@ -76,8 +88,6 @@ public class Shooter {
                 flywheelVel = 0.0;
                 break;
         }
-        heldAngle = azimuthAngle;
-
         turret.setTargetAngle(azimuthAngle + turretBias);
         flywheel.setTargetRpm(flywheelVel);
 
@@ -103,6 +113,11 @@ public class Shooter {
         } else {
             setShooterState(ShooterState.IDLE_HIVE);
         }
+    }
+
+    /** Vision's aim correction in radians (+ = aim further left / CCW). Pass 0 for odometry only. */
+    public void setAimCorrection(double rad) {
+        aimCorrectionRad = rad;
     }
 
     public void setTarget(double x, double y) {
@@ -131,6 +146,7 @@ public class Shooter {
 
     public void addTelemetry(Telemetry telemetry) {
         telemetry.addData("Shooter State", shooterState);
+        if (fixedShoot) telemetry.addData("FALLBACK", "turret %.0f deg, flywheel %.0f rpm, aim with the robot", FIXED_TURRET_DEG, FIXED_RPM);
         telemetry.addData("Distance", "%.1f in", calculatedShot.distanceIn);
         telemetry.addData("Turret", "%.1f / %.1f deg",
                 Math.toDegrees(turret.getAngleRad()), Math.toDegrees(azimuthAngle + turretBias));
