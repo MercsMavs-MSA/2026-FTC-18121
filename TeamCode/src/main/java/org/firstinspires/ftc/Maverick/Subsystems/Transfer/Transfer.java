@@ -23,6 +23,10 @@ public class Transfer {
     public static double GATE_CLOSED_POSITION = 0.185;
     public static double GATE_OPEN_POSITION = 0.26;
 
+    // After the gate starts opening, the transfer motor stays off for this long so the first ball does not
+    // hit the gate while it is still moving out of the way. Tune on the robot.
+    public static double FEED_DELAY_MS = 700.0;
+
     // Re-send the gate position this often, so a command that didn't take (gate closed onto a ball, got
     // knocked, servo glitched) is retried instead of waiting for the next state change.
     public static double GATE_REFRESH_MS = 100.0;
@@ -41,6 +45,7 @@ public class Transfer {
     private double lastGatePosition = Double.NaN;
     private boolean gateOpen = false;
     private final ElapsedTime gateRefreshTimer = new ElapsedTime();
+    private final ElapsedTime gateOpenTimer = new ElapsedTime();   // time since the gate was told to open
     private boolean dither = false;
 
     public Transfer(HardwareMap hardwareMap) {
@@ -73,6 +78,11 @@ public class Transfer {
         return gateOpen;
     }
 
+    /** True once the gate is open and FEED_DELAY_MS has passed, so balls can safely be pushed through. */
+    public boolean isFeedReady() {
+        return gateOpen && gateOpenTimer.milliseconds() >= FEED_DELAY_MS;
+    }
+
     public void update() {
         double power;
         boolean open;
@@ -95,6 +105,12 @@ public class Transfer {
                 break;
         }
         if (state != State.OFF) manualGateOpen = false;
+
+        // gateOpen still holds last loop's value here: a false -> true change starts the delay
+        if (open && !gateOpen) gateOpenTimer.reset();
+        if (state == State.FEEDING && gateOpenTimer.milliseconds() < FEED_DELAY_MS) {
+            power = 0.0;   // gate is still moving out of the way: do not push balls yet
+        }
 
         if (power != lastPower) {
             transfer.setPower(power);
@@ -122,6 +138,6 @@ public class Transfer {
 
     public void addTelemetry(Telemetry telemetry) {
         telemetry.addData("Transfer", state);
-        telemetry.addData("Gate", gateOpen ? "OPEN" : "CLOSED");
+        telemetry.addData("Gate", gateOpen ? (isFeedReady() ? "OPEN (feed ready)" : "OPENING") : "CLOSED");
     }
 }
