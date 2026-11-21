@@ -30,7 +30,7 @@ public class Robot extends OpMode {
     public static boolean USE_FIELD_TARGET = true;   // false: aim at TARGET_X / TARGET_Y as set (testing)
 
     // AUTO CELL: aim at the CELL on our half of the field (split at y = 72, between the two CELLs).
-    // false = manual: Back switches the CELL.
+    // false = manual: right stick press switches the CELL.
     public static boolean AUTO_CELL = true;
     public static double CELL_SWITCH_DEADBAND_IN = 6.0;   // must be this far past the middle line before it switches
 
@@ -103,17 +103,25 @@ public class Robot extends OpMode {
 
         //if (gamepad1.dpadDownWasPressed()) intake.toggleFlower();
         if (gamepad1.dpadUpWasPressed()) transfer.toggleGate();
-        if (gamepad1.rightStickButtonWasPressed()) {
+        if (gamepad1.backWasPressed()) {
             shooter.fixedShoot = !shooter.fixedShoot;            // fallback: fixed turret angle + fixed rpm, no odometry
+            if (shooter.fixedShoot) shooter.closeShoot = false;
             gamepad1.rumbleBlips(shooter.fixedShoot ? 2 : 1);   // 2 blips = fallback on, 1 = back to normal aiming
+        }
+        if (gamepad1.dpadLeftWasPressed()) {
+            shooter.closeShoot = !shooter.closeShoot;            // close-up shot: turret out the front, low rpm, no odometry
+            if (shooter.closeShoot) shooter.fixedShoot = false;
+            gamepad1.rumbleBlips(shooter.closeShoot ? 3 : 1);   // 3 blips = close shot on, 1 = back to normal aiming
         }
         if (gamepad1.dpadDownWasPressed()) {
             drive.resetHeading();
             if (vision != null) vision.reset();   // the old correction was for the old heading
         }
-        if (gamepad1.backWasPressed() && !AUTO_CELL) {
+        if (gamepad1.rightStickButtonWasPressed() && !AUTO_CELL) {
             setCell(hiveState == FieldConstants.HiveState.A ? FieldConstants.HiveState.B : FieldConstants.HiveState.A);
         }
+
+
 
         boolean intakeHeld = gamepad1.left_trigger > 0.5;
 
@@ -183,9 +191,9 @@ public class Robot extends OpMode {
         transfer.update();
 
         telemetry.addData("Alliance / CELL", "%s / cell %s (%s)", ALLIANCE, hiveState,
-                AUTO_CELL ? "auto: by field half" : "manual: Back switches");
+                AUTO_CELL ? "auto: by field half" : "manual: right stick switches");
         telemetry.addData("Robot State", robotState);
-        telemetry.addData("Fixed Shooter", shooter.fixedShoot);
+        telemetry.addData("Shooter mode", "%s   (Back = FIXED, dpad left = CLOSE)", shooter.modeName());
         telemetry.addData("Flywheel ready", shooter.readyToFire() ? "YES: hold A to feed" : "no");
         drive.addTelemetry(telemetry);
         shooter.addTelemetry(telemetry);

@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
@@ -22,6 +23,13 @@ public class Transfer {
     public static double GATE_CLOSED_POSITION = 0.185;
     public static double GATE_OPEN_POSITION = 0.26;
 
+    // Re-send the gate position this often, so a command that didn't take (gate closed onto a ball, got
+    // knocked, servo glitched) is retried instead of waiting for the next state change.
+    public static double GATE_REFRESH_MS = 100.0;
+    // The SDK may skip a command identical to the last one, so each refresh alternates the position by
+    // this much to force it out. 0.0005 is about 1 microsecond of servo pulse: far too small to move the gate.
+    public static double GATE_DITHER = 0.0005;
+
     private final DcMotorEx transfer;
     private final Servo gateServo;
 
@@ -32,6 +40,8 @@ public class Transfer {
     private double lastPower = Double.NaN;
     private double lastGatePosition = Double.NaN;
     private boolean gateOpen = false;
+    private final ElapsedTime gateRefreshTimer = new ElapsedTime();
+    private boolean dither = false;
 
     public Transfer(HardwareMap hardwareMap) {
         transfer = hardwareMap.get(DcMotorEx.class, "transferMotor");
@@ -72,7 +82,7 @@ public class Transfer {
                 open = false;
                 break;
             case FEEDING:
-                power = TRANSFER_MAX_POWER*0.8;
+                power = TRANSFER_MAX_POWER*0.67;
                 open = true;
                 break;
             case REVERSING:
@@ -94,9 +104,12 @@ public class Transfer {
         gateOpen = open;
         if (gateEnabled) {
             double position = open ? GATE_OPEN_POSITION : GATE_CLOSED_POSITION;
-            if (position != lastGatePosition) {
-                gateServo.setPosition(position);
+            // send on a change right away, and re-send every GATE_REFRESH_MS while it stays the same
+            if (position != lastGatePosition || gateRefreshTimer.milliseconds() >= GATE_REFRESH_MS) {
+                dither = !dither;
+                gateServo.setPosition(position + (dither ? GATE_DITHER : 0.0));
                 lastGatePosition = position;
+                gateRefreshTimer.reset();
             }
         }
     }
