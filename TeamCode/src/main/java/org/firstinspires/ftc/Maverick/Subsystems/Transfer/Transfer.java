@@ -25,7 +25,7 @@ public class Transfer {
 
     // After the gate starts opening, the transfer motor stays off for this long so the first ball does not
     // hit the gate while it is still moving out of the way. Tune on the robot.
-    public static double FEED_DELAY_MS = 700.0;
+    public static double FEED_DELAY_MS = 500.0;
 
     // Re-send the gate position this often, so a command that didn't take (gate closed onto a ball, got
     // knocked, servo glitched) is retried instead of waiting for the next state change.
@@ -92,7 +92,7 @@ public class Transfer {
                 open = false;
                 break;
             case FEEDING:
-                power = TRANSFER_MAX_POWER*0.55;
+                power = TRANSFER_MAX_POWER*0.45;
                 open = true;
                 break;
             case REVERSING:
