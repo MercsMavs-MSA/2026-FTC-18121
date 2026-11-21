@@ -15,6 +15,7 @@ public class Transfer {
         INTAKING,
         TAP_FEED,    // TeleOp operator: transfer pushes while the button is held. Gate is NOT touched (it's a toggle).
         FEEDING,     // autos: opens the gate itself, backs off, waits, then feeds (the sequence below)
+        HOLD_OPEN,   // autos: gate stays open, transfer stopped (the pause between shots, after FEEDING)
         REVERSING
     }
 
@@ -118,6 +119,11 @@ public class Transfer {
                 power = FEED_POWER;   // the back-off / wait phases below override this at the start
                 open = true;
                 gateToggledOpen = false;   // the gate closes again when feeding stops
+                break;
+            case HOLD_OPEN:
+                power = 0.0;               // gate stays open, motor stopped; no back-off or wait when FEEDING resumes
+                open = true;
+                gateToggledOpen = false;
                 break;
             case REVERSING:
                 power = TRANSFER_REVERSE_POWER;

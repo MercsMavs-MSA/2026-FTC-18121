@@ -22,9 +22,11 @@ import java.util.List;
 /**
  * Simple autonomous, no path planner:
  *   1. Drive from the start pose to the shooting spot (SHOOT_X, SHOOT_Y), same heading, held on line by the Pinpoint.
- *   2. Aim at the HIVE's starting CELL (A) and spin up, then feed for FEED_TIME_S.
+ *   2. Aim at the HIVE's starting CELL (A) and spin up, then shoot TOTAL_SHOTS balls: the first one feeds for
+ *      FIRST_SHOT_S (gate opens, back-off, wait, feed). Then the gate STAYS OPEN: the transfer stops for
+ *      BETWEEN_SHOTS_S, runs for SHOT_PULSE_S to send the next ball, and repeats.
  *   3. Back off BACK_FRACTION of the way toward the start pose (halfway by default).
- *   4. Drive diagonally to the loading zone (LOAD_X, LOAD_Y).
+ *   4. Drive diagonally to the loading zone (LOAD_X, LOAD_Y) and park.
  *
  * All positions are RED, Pedro frame (inches). Blue is the same path turned half a turn about the field
  * center, like FieldConstants: (x, y, h) -> (144 - x, 144 - y, h + 180).
@@ -52,7 +54,11 @@ public class MaverickAuto extends OpMode {
     // ===== Shooting =====
     public static double SPINUP_TIMEOUT_S = 3.0;  // feed anyway after this long, even if not "ready"
     public static double AIM_TOLERANCE_DEG = 2.0; // turret within this of its aim before feeding
-    public static double FEED_TIME_S = 5.5;       // feed this long, then leave: long enough for the whole preload
+    public static int TOTAL_SHOTS = 4;            // the 4 preloaded balls
+    public static double FIRST_SHOT_S = 2.0;      // first ball: gate opens, back-off, wait, then feed (about 2 s)
+    public static double BETWEEN_SHOTS_S = 1.5;   // gate stays open, transfer stopped, before each next ball
+    public static double SHOT_PULSE_S = 1.3;      // transfer runs this long to send one ball (tune: no gate delay now)
+    public static boolean INTAKE_ON_IN_PAUSE = false;   // false: the intake also stops between balls
 
     // ===== Drive controller =====
     public static double KP_POS = 0.06;           // power per inch of distance
@@ -79,7 +85,7 @@ public class MaverickAuto extends OpMode {
     public static double WRONG_WAY_IN = 6.0;
     public static double HEADING_ABORT_DEG = 30.0;
 
-    private enum State { DRIVE_TO_SHOT, SPIN_UP, FEED, DRIVE_BACK, DRIVE_TO_LOAD, DONE, ABORTED }
+    private enum State { DRIVE_TO_SHOT, SPIN_UP, FEED, SHOT_PAUSE, SHOT_PULSE, DRIVE_BACK, DRIVE_TO_LOAD, DONE, ABORTED }
 
     private List<LynxModule> hubs;
     private Drive drive;
@@ -94,6 +100,7 @@ public class MaverickAuto extends OpMode {
     private boolean settling = false;
     private double minDistIn = Double.POSITIVE_INFINITY;
     private String abortReason = "";
+    private int shotsDone = 0;
 
     private FieldConstants.Alliance alliance;
     private double startX, startY, holdHeadingRad;
@@ -120,7 +127,8 @@ public class MaverickAuto extends OpMode {
         telemetry.addData("Alliance", "%s   (X = blue, B = red)", a);
         telemetry.addData("Place robot at", "(%.1f, %.1f) facing %.0f deg, turret at its zero stop",
                 FieldConstants.testStartX(a), FieldConstants.testStartY(a), FieldConstants.testStartDeg(a));
-        telemetry.addData("Feed time", "%.1f s", FEED_TIME_S);
+        telemetry.addData("Shots", "%d  (first %.1f s, then %.1f s pause + %.1f s feed each)",
+                TOTAL_SHOTS, FIRST_SHOT_S, BETWEEN_SHOTS_S, SHOT_PULSE_S);
         telemetry.update();
     }
 
@@ -135,6 +143,7 @@ public class MaverickAuto extends OpMode {
         intake.start();
         transfer.start();
 
+        shotsDone = 0;
         setGoal(SHOOT_X, SHOOT_Y);   // red numbers; mirrored for blue
         enter(State.DRIVE_TO_SHOT);
     }
@@ -176,25 +185,33 @@ public class MaverickAuto extends OpMode {
                 }
                 break;
 
-            case FEED:
+            case FEED:   // first ball: Transfer opens the gate, backs off, waits, then feeds
                 drive.stop();
                 shooter.startShooter();
                 intake.setState(Intake.State.INTAKING);
                 transfer.setState(Transfer.State.FEEDING);
-                if (stateTimer.seconds() >= FEED_TIME_S) {
-                    ballPathOff();
-                    shooter.idleShooter();               // turret parks home, flywheel back to its idle roll
-                    if (BACK_FRACTION > 0) {
-                        // red numbers: SHOOT + fraction of the way to the (red) start
-                        double redStartX = alliance == FieldConstants.Alliance.RED ? startX : 144.0 - startX;
-                        double redStartY = alliance == FieldConstants.Alliance.RED ? startY : 144.0 - startY;
-                        setGoal(SHOOT_X + BACK_FRACTION * (redStartX - SHOOT_X),
-                                SHOOT_Y + BACK_FRACTION * (redStartY - SHOOT_Y));
-                        enter(State.DRIVE_BACK);
-                    } else {
-                        setGoal(LOAD_X, LOAD_Y);
-                        enter(State.DRIVE_TO_LOAD);
-                    }
+                if (stateTimer.seconds() >= FIRST_SHOT_S) {
+                    shotsDone = 1;
+                    afterShot();
+                }
+                break;
+
+            case SHOT_PAUSE:   // gate stays open, transfer stopped
+                drive.stop();
+                shooter.startShooter();
+                intake.setState(INTAKE_ON_IN_PAUSE ? Intake.State.INTAKING : Intake.State.OFF);
+                transfer.setState(Transfer.State.HOLD_OPEN);
+                if (stateTimer.seconds() >= BETWEEN_SHOTS_S) enter(State.SHOT_PULSE);
+                break;
+
+            case SHOT_PULSE:   // send one ball; the gate is already open, so no back-off or opening wait
+                drive.stop();
+                shooter.startShooter();
+                intake.setState(Intake.State.INTAKING);
+                transfer.setState(Transfer.State.FEEDING);
+                if (stateTimer.seconds() >= SHOT_PULSE_S) {
+                    shotsDone++;
+                    afterShot();
                 }
                 break;
 
@@ -232,7 +249,9 @@ public class MaverickAuto extends OpMode {
 
         telemetry.addData("State", state == State.ABORTED ? "ABORTED: " + abortReason : state.toString());
         telemetry.addData("Goal", "(%.1f, %.1f)  dist %.1f in", goalX, goalY, distToGoal());
-        if (state == State.FEED) telemetry.addData("Feeding", "%.1f of %.1f s", stateTimer.seconds(), FEED_TIME_S);
+        if (state == State.FEED || state == State.SHOT_PAUSE || state == State.SHOT_PULSE) {
+            telemetry.addData("Shots", "%d of %d done", shotsDone, TOTAL_SHOTS);
+        }
         drive.addTelemetry(telemetry);
         shooter.addTelemetry(telemetry);
         if (vision != null && Robot.USE_VISION) vision.addTelemetry(telemetry);
@@ -252,6 +271,27 @@ public class MaverickAuto extends OpMode {
     }
 
     // ---------------------------------------------------------------------------------------------
+
+    /** After a ball: shoot the next one, or once all TOTAL_SHOTS are done, leave. */
+    private void afterShot() {
+        if (shotsDone < TOTAL_SHOTS) {
+            enter(State.SHOT_PAUSE);
+            return;
+        }
+        ballPathOff();                           // transfer off: the gate closes
+        shooter.idleShooter();                   // turret parks home, flywheel back to its idle roll
+        if (BACK_FRACTION > 0) {
+            // red numbers: SHOOT + fraction of the way to the (red) start
+            double redStartX = alliance == FieldConstants.Alliance.RED ? startX : 144.0 - startX;
+            double redStartY = alliance == FieldConstants.Alliance.RED ? startY : 144.0 - startY;
+            setGoal(SHOOT_X + BACK_FRACTION * (redStartX - SHOOT_X),
+                    SHOOT_Y + BACK_FRACTION * (redStartY - SHOOT_Y));
+            enter(State.DRIVE_BACK);
+        } else {
+            setGoal(LOAD_X, LOAD_Y);
+            enter(State.DRIVE_TO_LOAD);
+        }
+    }
 
     /** Set the next target. Takes RED coordinates and mirrors them for blue. */
     private void setGoal(double redX, double redY) {
