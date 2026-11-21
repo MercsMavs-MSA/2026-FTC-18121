@@ -142,7 +142,7 @@ public class Drive {
         backRightDrive.setPower(maxSpeed * (backRightPower / maxPower));
     }
 
-    /** Keeps the sign, bends the response so small stick movements give small powers. */
+    // Keeps the sign, bends the response so small stick movements give small powers.
     private static double shape(double x) {
         return Math.signum(x) * Math.pow(Math.abs(x), STICK_EXPONENT);
     }
