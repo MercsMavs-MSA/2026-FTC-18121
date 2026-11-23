@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.Maverick.Autos;
+package org.firstinspires.ftc.Maverick.Autos.HardCodedAutos;
 
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
