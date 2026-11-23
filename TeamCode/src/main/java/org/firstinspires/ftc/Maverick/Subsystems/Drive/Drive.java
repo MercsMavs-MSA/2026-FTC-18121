@@ -68,6 +68,14 @@ public class Drive {
         pose = newPose;
     }
 
+    /**
+     * For autos where Pedro owns the odometry: refresh the cached pose (used by the Shooter to aim and by
+     * saveForTeleop) WITHOUT touching the Pinpoint. Pedro's frame is the same field frame as FieldConstants.
+     */
+    public void setCachedPose(double xIn, double yIn, double headingRad) {
+        pose = new Pose2D(DistanceUnit.INCH, xIn, yIn, AngleUnit.RADIANS, headingRad);
+    }
+
     public void setDriverForward(double rad) {
         driverForwardRad = rad;
     }
