@@ -27,97 +27,110 @@ import org.firstinspires.ftc.Maverick.Subsystems.Transfer.Transfer;
 import java.util.List;
 
 /**
- * RED auto (Pedro frame), paths unchanged from the path editor:
- *   Path 1  drive to the shot spot. Shooter spins up + turret aims on the way. Wait 0.5 s, shoot the 4 preloads.
- *   Path 2  drive back to the loading corner. At its end: intake at max, gate closed.
- *   Path 3  intake the balls.
- *   Path 4  drive to the shot spot (shooter spins up + aims on the way). Wait 0.5 s, shoot.
- *   Path 5  drive to the flower. At its end: flower grabber + intake.
- *   Path 6  drive to the shot spot (shooter spins up + aims on the way). Wait 1 s, shoot 4.
- *   Path 7, 8  park.
- * The Shooter keeps spinning and aiming while its state is SHOOT, so "spin up + aim on the way" is just
- * startShooter() right before the follow(). Aiming uses the Pedro pose (fed into Drive each loop).
- * Shot timing reuses the tuned sequence from MaverickAuto (first ball, then pause + pulse per ball).
+ *   flower-only auto (Pedro). Start (56, 8).
+ *   Path 1  shooter charges + aims on the way. Arrive, wait, shoot 4.
+ *   Path 2  drive, then flower grabber DOWN.
+ *   Path 3  intake on while driving, wait 1 s, grabber UP, intake off.
+ *   Path 4, 5  drive.
+ *   Path 6  shooter charges + aims on the way. Arrive, wait 1 s, shoot 4.
+ *   Then grabber DOWN, intake on, path 7, wait 1 s, grabber UP, intake off.
+ *   Path 8  shooter charges + aims on the way. Arrive, wait 1 s, shoot 4.
+ *   Path 9  park.
  */
-@Autonomous(name = "Red: Double Tip + Park", group = "Autonomous", preselectTeleOp = "18121 Maverick TeleOp")
-public class DoubleTip_AndParkAuto extends LinearOpMode {
+@Autonomous(name = "Red: Flower Double Tip + Park", group = "Autonomous", preselectTeleOp = "18121 Maverick TeleOp")
+public class FLOWER_DoubleTip_AndParkAuto extends LinearOpMode {
 
-    // ===== Shot timing (seconds) =====
-    public static double AIM_WAIT_S = 0.5;          // wait after arriving, before shooting (volleys 1 and 2)
-    public static double FINAL_AIM_WAIT_S = 1.0;    // same, for the last volley (after path 6)
-    public static double FIRST_SHOT_S = 2.0;        // first ball: gate opens, back-off, wait, feed (same as MaverickAuto)
-    public static double BETWEEN_SHOTS_S = 1.5;     // gate open, transfer stopped, before each next ball
-    public static double SHOT_PULSE_S = 1.3;        // transfer runs this long to send one ball
-    public static int VOLLEY_1_BALLS = 4;           // preloads
-    public static int VOLLEY_2_BALLS = 4;           // picked up on path 3
+    // ===== Waits (seconds) =====
+    public static double FIRST_AIM_WAIT_S = 0.5;    // after path 1, before shooting - @nitin we need to prob tune this
+    public static double AIM_WAIT_S = 1.0;          // after paths 6 and 8, before shooting - @nitin we need to prob tune this
+    public static double FLOWER_MOVE_S = 0.4;       // time for the grabber servo to finish moving - @nitin we need to prob tune this
+    public static double FLOWER_INTAKE_S = 1.0;     // intake time for the balls at the flower - @nitin we need to prob tune this
+
+    public static double FIRST_SHOT_S = 2.0;        // first ball: gate opens, back-off, wait, feed
+    public static double BETWEEN_SHOTS_S = 0.5;     // gate open, transfer stopped, before each next ball - @nitin we need to prob tune this
+    public static double SHOT_PULSE_S = 1.3;        // transfer runs this long to send one ball - @nitin we need to prob tune this
+    public static int VOLLEY_1_BALLS = 4;
+    public static int VOLLEY_2_BALLS = 4;
     public static int VOLLEY_3_BALLS = 4;
-    public static double FLOWER_GRAB_S = 1.0;       // time at the flower for the grabber + intake (tune)
 
-    // false = Shooter.CLOSE_RPM, true = Shooter.FAR_RPM (the fastest shot speed the Shooter has)
     public static boolean USE_FAR_RPM = false;
 
+    public static boolean FLOWER_DOWN_IS_OPEN = false;
+
+    private static final FieldConstants.Alliance ALLIANCE = FieldConstants.Alliance.RED;
+
     private Follower follower;
+    private List<LynxModule> hubs;
     private Drive drive;
     private Intake intake;
     private Transfer transfer;
     private Shooter shooter;
     private Vision vision;
 
-    // Paths are RED. Blue would need the paths mirrored: (x, y, h) -> (144 - x, 144 - y, h + 180).
-    private static final FieldConstants.Alliance ALLIANCE = FieldConstants.Alliance.RED;
-
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(7.2324, 30.5366, 90);
-    private final Pose path1 = poseFactory.of(51.5666, 29.7193, 90);
-    private final Pose point2Start = poseFactory.of(51.5666, 29.7193, 90);
-    private final Pose point2 = poseFactory.of(5.8476, 12.4725, 270);
-    private final Pose point3 = poseFactory.of(5.6341, 4.6181, 270);
-    private final Pose point4Start = poseFactory.of(5.6341, 4.6181, 270);
-    private final Pose point4 = poseFactory.of(47.0101, 116.321, 270);
-    private final Pose point5 = poseFactory.of(46.9248, 135.4121, 90.2559);
-    private final Pose point6Start = poseFactory.of(46.9248, 135.4121, 90);
-    private final Pose point6 = poseFactory.of(48.345, 116.324, 270);
-    private final Pose point7 = poseFactory.of(28.6892, 96.3077, -134.4794);
-    private final Pose point8 = poseFactory.of(7.9098, 96.5068, -0.549);
+    private final Pose start = poseFactory.of(56, 8, 90);
+    private final Pose path1 = poseFactory.of(56.3773, 23.8655, 90);
+    private final Pose point2 = poseFactory.of(17.7374, 46.6041, 149.5243);
+    private final Pose point3 = poseFactory.of(7.8222, 46.5181, -179.5032);
+    private final Pose point4 = poseFactory.of(28.6601, 55.91, 180);
+    private final Pose point5 = poseFactory.of(41.5847, 118.2483, -101.7132);
+    private final Pose point6 = poseFactory.of(54.5234, 116.5973, 270);
+    private final Pose point7 = poseFactory.of(47.1589, 132.1956, 90);
+    private final Pose point8 = poseFactory.of(47.5327, 115.4494, 90);
+    private final Pose point9 = poseFactory.of(4.8242, 116.0978, -0.8698);
 
     // Autonomous routine
     public Command autoRoutine() {
         return sequential(
-                // ---- Path 1: shoot the 4 preloads ----
+                // ---- Path 1: shoot 4 ----
                 instant(this::spinUpShooter),
                 follow(follower, path1()),
-                waitMs(ms(AIM_WAIT_S)),
+                waitMs(ms(FIRST_AIM_WAIT_S)),
                 shoot(VOLLEY_1_BALLS),
                 instant(shooter::idleShooter),
 
-                // ---- Path 2, then intake on + gate closed, path 3 picks up the balls ----
+                // ---- Path 2, then grabber down ----
                 follow(follower, path2()),
+                instant(this::flowerDown),
+                waitMs(ms(FLOWER_MOVE_S)),
+
+                // ---- Path 3: intake on, wait, grabber up, intake off ----
                 instant(this::startIntaking),
                 follow(follower, path3()),
+                waitMs(ms(FLOWER_INTAKE_S)),
+                instant(this::flowerUp),
+                instant(this::ballPathOff),
 
-                // ---- Path 4: shoot ----
-                instant(this::spinUpShooter),
+                // ---- Paths 4 and 5 ----
                 follow(follower, path4()),
+                follow(follower, path5()),
+
+                // ---- Path 6: shoot 4 ----
+                instant(this::spinUpShooter),
+                follow(follower, path6()),
                 waitMs(ms(AIM_WAIT_S)),
                 shoot(VOLLEY_2_BALLS),
                 instant(shooter::idleShooter),
 
-                // ---- Path 5: flower ----
-                follow(follower, path5()),
-                instant(this::grabFlowerAndIntake),
-                waitMs(ms(FLOWER_GRAB_S)),
+                // ---- Grabber down, path 7 with intake on, wait, grabber up, intake off ----
+                instant(this::flowerDown),
+                waitMs(ms(FLOWER_MOVE_S)),
+                instant(this::startIntaking),
+                follow(follower, path7()),
+                waitMs(ms(FLOWER_INTAKE_S)),
+                instant(this::flowerUp),
+                instant(this::ballPathOff),
 
-                // ---- Path 6: shoot ----
+                // ---- Path 8: shoot 4 ----
                 instant(this::spinUpShooter),
-                follow(follower, path6()),
-                waitMs(ms(FINAL_AIM_WAIT_S)),
+                follow(follower, path8()),
+                waitMs(ms(AIM_WAIT_S)),
                 shoot(VOLLEY_3_BALLS),
                 instant(shooter::idleShooter),
 
-                // ---- Paths 7 and 8: park ----
-                follow(follower, path7()),
-                follow(follower, path8())
+                // ---- Path 9: park ----
+                follow(follower, path9())
         );
     }
 
@@ -125,8 +138,7 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
     public void runOpMode() {
         Scheduler.reset();
 
-        List<LynxModule> hubs = hardwareMap.getAll(LynxModule.class);
-
+        hubs = hardwareMap.getAll(LynxModule.class);
         drive = new Drive(hardwareMap);
         intake = new Intake(hardwareMap);
         transfer = new Transfer(hardwareMap);
@@ -137,7 +149,6 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
         assert follower != null;
         follower.setPose(start);
         follower.update();
-
         for (LynxModule hub : hubs) hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
 
         syncPose();
@@ -179,7 +190,6 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
             telemetry.update();
         }
 
-        // hand the pose and turret angle to TeleOp, then shut everything off
         drive.saveForTeleop();
         shooter.getTurret().saveForTeleop();
         shooter.stop();
@@ -189,21 +199,21 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
     }
 
 
-    // Flywheel to shot speed and turret aiming
     private void spinUpShooter() {
         shooter.startShooter();
     }
 
-    // Intake at max, transfer stacks balls up the gate.
     private void startIntaking() {
         intake.setState(Intake.State.INTAKING);
         transfer.setState(Transfer.State.INTAKING);
     }
 
+    private void flowerDown() {
+        intake.setFlowerOpen(FLOWER_DOWN_IS_OPEN);
+    }
 
-    private void grabFlowerAndIntake() {
-        intake.setFlowerOpen(false);
-        intake.setState(Intake.State.INTAKING);
+    private void flowerUp() {
+        intake.setFlowerOpen(!FLOWER_DOWN_IS_OPEN);
     }
 
     private static long ms(double seconds) {
@@ -215,7 +225,6 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
         transfer.setState(Transfer.State.OFF);   // gate closes
     }
 
-    // Shoot pollen like other
     private Command shoot(int balls) {
         Command volley = sequential(
                 instant(this::feedBall),
@@ -233,24 +242,21 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
         return sequential(volley, instant(this::ballPathOff));
     }
 
-    private void feedBall() {   // opens the gate itself, backs off, waits, then feeds
+    private void feedBall() {
         intake.setState(Intake.State.INTAKING);
         transfer.setState(Transfer.State.FEEDING);
     }
 
-    private void pauseBetweenBalls() {   // gate stays open, transfer stopped
+    private void pauseBetweenBalls() {
         intake.setState(Intake.State.OFF);
         transfer.setState(Transfer.State.HOLD_OPEN);
     }
 
-    // Pose / aiming
 
-    // give PedroPathing pose to Drive so the Shooter aims from it.
     private void syncPose() {
         drive.setCachedPose(follower.pose().x(), follower.pose().y(), follower.pose().heading());
     }
 
-    // Aim at the HIVE cell on our half of the field (A below the middle line, B above), like TeleOp.
     private void updateAim() {
         FieldConstants.HiveState cell = drive.getY() < FieldConstants.FIELD_CENTER
                 ? FieldConstants.HiveState.A : FieldConstants.HiveState.B;
@@ -268,39 +274,41 @@ public class DoubleTip_AndParkAuto extends LinearOpMode {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-    // Paths (unchanged)
-    // ---------------------------------------------------------------------------------------------
+    // Paths from pedro
 
     public Path path1() {
         return Paths.line(start, path1).constant(path1);
     }
 
     public Path path2() {
-        return Paths.line(point2Start, point2).linear(point2Start, point2);
+        return Paths.line(path1, point2).tangent();
     }
 
     public Path path3() {
-        return Paths.line(point2, point3).constant(point3);
+        return Paths.line(point2, point3).tangent();
     }
 
     public Path path4() {
-        return Paths.line(point4Start, point4).linear(point4Start, point4);
+        return Paths.line(point3, point4).constant(point4);
     }
 
     public Path path5() {
-        return Paths.line(point4, point5).tangent();
+        return Paths.line(point4, point5).reverseTangent();
     }
 
     public Path path6() {
-        return Paths.line(point6Start, point6).linear(point6Start, point6);
+        return Paths.line(point5, point6).constant(point6);
     }
 
     public Path path7() {
-        return Paths.line(point6, point7).tangent();
+        return Paths.line(point6, point7).constant(point7);
     }
 
     public Path path8() {
-        return Paths.line(point7, point8).reverseTangent();
+        return Paths.line(point7, point8).constant(point8);
+    }
+
+    public Path path9() {
+        return Paths.line(point8, point9).reverseTangent();
     }
 }
