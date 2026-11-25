@@ -3,18 +3,18 @@ package org.firstinspires.ftc.Maverick;
 /**
  * Field coordinates for BIOBUZZ in the PEDRO PATHING frame, so poses can pass straight from a Pedro auto
  * into TeleOp.
- *
+
  * PEDRO FRAME (as used on visualizer.pedropathing.com):
  *   origin in the RED / AUDIENCE corner, +x toward the BLUE wall, +y toward the FAR wall (away from the
  *   audience), inches, heading 0 = facing +x, counter-clockwise positive. The field is drawn 144 x 144;
  *   the real walls are about 1.3 in inside that (141.3 in wall to wall).
- *
+ 
  * WHERE THE NUMBERS COME FROM: FTC team 12303's FieldConstants (craigmichaelmartin/ftc-12303), which they
  * took from the official field CAD in the FTC field frame, converted here with the conversion they quote
  * from the Pedro docs: x_pedro = y_ftc + 72, y_pedro = 72 - x_ftc, heading_pedro = heading_ftc - 90 deg.
  * Verify on a real field: event fields vary by about +-1 in.
- *
- * BLUE is RED turned half a turn about the field centre (the field is rotationally symmetric, not a
+
+ * BLUE is RED turned half a turn about the field center (the field is rotationally symmetric, not a
  * mirror): (x, y, h) -> (144 - x, 144 - y, h + 180 deg).
  */
 public final class FieldConstants {
