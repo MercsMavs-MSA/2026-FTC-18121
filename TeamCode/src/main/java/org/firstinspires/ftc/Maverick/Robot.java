@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * Controls: TWO_DRIVER picks the scheme.
- *
+
  * TWO_DRIVER = true (driver + operator)
  *   DRIVER (gamepad 1):   sticks drive, LT intake, LB outtake, D-pad down reset heading,
  *                         right stick press switch CELL (only when AUTO_CELL is false).
@@ -28,9 +28,9 @@ import java.util.List;
  *                         A feed: the transfer and intake push only while A is held, so tap it to feed a little at a time,
  *                         Back switch CLOSE / FAR speed (1 rumble = CLOSE, 2 = FAR).
  * The gate opens only on the operator's Y. Driver intake / outtake closes it (and it stays closed), so
- * intaking always stacks balls against the gate. While the operator holds A the intake runs too, and the
+ * In-taking always stacks balls against the gate. While the operator holds A the intake runs too, and the
  * driver's LT / LB don't change anything (the gate stays open).
- *
+
  * TWO_DRIVER = false (old one-driver scheme, everything on gamepad 1)
  *   sticks drive, LT intake, LB outtake, RT (hold) spin up, A (hold) feed: opens the gate, backs off, then
  *   feeds (same sequence as the autos), D-pad up manual gate toggle, Back CLOSE / FAR, D-pad down reset heading,

@@ -28,17 +28,17 @@ import java.util.TreeMap;
 /**
  * Shot map calibration: find the flywheel rpm that scores at each distance, and get rows you can
  * paste straight into ShooterCalculator.SHOT_TABLE.
- *
+
  * The turret aims itself (ShooterCalculator + Pinpoint, same as Robot.java). Feeding is manual: RT opens
  * the gate and feeds whenever it is held. Wait for "Ready: YES" before feeding so each logged shot is a
  * fair test of the rpm.
  * Distance is the turret-pivot-to-target distance the shot table uses: from odometry by default, or a
  * tape-measured value if odometry isn't trusted yet.
- *
+
  * SETUP (Pedro frame, see FieldConstants): pick the alliance in INIT (X = blue, B = red). Put the robot
  * at that alliance's test start pose with the turret at its zero stop (pointing backward). The target
  * is the alliance's CELL A aim point.
- *
+
  * WORKFLOW at each spot:
  *   1. Drive to a spot (slow drive is always on here). Check the distance in telemetry.
  *   2. A spins the flywheel up. Set an rpm with D-pad up/down.
@@ -46,13 +46,13 @@ import java.util.TreeMap;
  *   4. After each ball: X = landed SHORT, Y = GOOD (scored), B = LONG.
  *   5. Change rpm and repeat until a spot has both a SHORT and a LONG, or a few GOODs. Then move.
  *   Suggested rows appear in telemetry as "{ distance, rpm }," lines.
- *
+
  * CONTROLS (gamepad1)
  *   Sticks          drive (field-relative, slow)        LT intake   LB outtake   RT feed (manual)
  *   A               flywheel on / off                   D-pad up/down  rpm +/- step   Back  step 25 <-> 100
  *   X / Y / B       log SHORT / GOOD / LONG             Right stick press  undo last log
  *   Left stick press  distance source: odometry <-> manual      D-pad left/right  manual distance -/+ 3 in
- *
+
  * Results: /sdcard/FIRST/shot_calibration.csv on the Control Hub and the Robot log (tag ShotCal).
  */
 @TeleOp(name = "Shot Calibration", group = "Tuning")

@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.util.Range;
 
 public class Flywheel {
 
-    // goBILDA 5203 6000 rpm motor (28 encoder ticks per motor turn), belt STEP-UP: wheel turns 1.5x the motor.
+    // GoBilda 5203 6000 rpm motor (28 encoder ticks per motor turn), belt STEP-UP: wheel turns 1.5x the motor.
     // All rpm values in this file are TRUE WHEEL rpm.
     public static double MAX_RPM = 4000.0;               // 6000 motor rpm x 1.5 (no load)
     public static double TICKS_PER_REV = 28.0 * 1.5;     // 18.67 encoder ticks per wheel turn

@@ -29,7 +29,7 @@ public class ShooterCalculator {
                 TURRET_ZERO_OFFSET_RAD, TARGET_HALF_WIDTH_IN, BALL_RADIUS_IN);
     }
 
-    /** Old signature (with an rpm trim), kept so older OpModes such as ShotCalibration still compile. The rpm trim is ignored. */
+    /** Old signature (with a rpm trim), kept so older OpModes such as ShotCalibration still compile. The rpm trim is ignored. */
     public static ShotSolution solve(double robotX, double robotY, double robotHeadingRad, double targetX, double targetY,
                                      double turretAngleNowRad, double aimTrimRad, double rpmTrimIgnored) {
         return solve(robotX, robotY, robotHeadingRad, targetX, targetY, turretAngleNowRad, aimTrimRad);

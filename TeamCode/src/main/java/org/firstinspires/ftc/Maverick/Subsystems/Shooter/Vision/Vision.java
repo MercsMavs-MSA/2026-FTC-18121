@@ -15,16 +15,16 @@ import java.util.List;
 
 /**
  * Vision aim correction from the turret-mounted Limelight 3A (USB, AprilTag pipeline).
- *
+
  * Odometry aims the turret first. The camera then measures where the up CELL's tag row really is.
  * The difference between that and where odometry thinks the goal is becomes a small, slowly filtered
  * angle correction that Shooter adds to the turret aim. It only changes the aim: the pose and the
  * distance used for the flywheel rpm still come from odometry.
- *
+
  * Only the up (scorable) CELL's 4 tags are used: Robot passes that CELL's first tag ID from
  * FieldConstants (red A = 34, red B = 30, blue A = 42, blue B = 38). Tag layout from Salvadrn's
  * BIOBUZZ CellVision: 4 tags in a row centered under the CELL opening.
- *
+
  * Frames are only used while the turret and robot are nearly still, so camera latency (~30-50 ms)
  * can't turn motion into a false correction. Readings far from the current correction are thrown out.
  */

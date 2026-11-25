@@ -18,7 +18,7 @@ import java.util.List;
  * Bench tuner for the Flywheel class. It does not tune anything by itself. It lets you see what the
  * wheel is doing, change the gains from the gamepad, and read back numbers that say whether the
  * defaults are good enough.
- *
+
  * SUGGESTED ORDER (stop as soon as the answer is "good enough")
  *   1. Look at "Hub gains now". With USE_PIDF = false these are whatever the hub/SDK defaults are for
  *      the motor type in your robot configuration. This is how you find out what they actually are.
@@ -35,7 +35,7 @@ import java.util.List;
  *   6. Compare a fresh battery and a tired one at the same target. A big difference is the only
  *      reason to add battery scaling.
  *   Gains you change here live only in memory: copy the final values into Flywheel.java.
- *
+
  * CONTROLS (gamepad1)
  *   A               flywheel on / off
  *   D-pad up/down   target rpm +/- step              B: step 50 <-> 250 rpm
@@ -44,7 +44,7 @@ import java.util.List;
  *   Y               toggle Flywheel.USE_PIDF (see the warning in telemetry when turning it off)
  *   X (hold)        measure max speed at full power (turns the flywheel off first)
  *   Back            clear the spin-up and ball-dip stats
- *
+
  * Needs an SDK with Gamepad edge methods (aWasPressed etc.). Not compiled or run on a robot.
  */
 @TeleOp(name = "Flywheel Tuner", group = "Tuning")
